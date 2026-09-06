@@ -31,6 +31,12 @@
   conflated (see Task 6 and Task 11).
 - Single-camera app: the first Tiny2-family device seen is the only one
   controlled; others are ignored, not an error (spec §2/§7).
+- The vendored SDK travels with the repo as `libdev_v1.0.2.tar.gz` (tracked
+  in git); the extracted `libdev_v1.0.2/` directory is gitignored and must
+  be (re-)extracted locally with `tar -xzf libdev_v1.0.2.tar.gz` before
+  building the bridge (Task 2 onward) — extracting on Windows turns the
+  SDK's `.so` symlinks into full copies, so always extract on the actual
+  Debian/Ubuntu build machine, not by copying a Windows-extracted copy.
 
 ---
 
@@ -2074,6 +2080,8 @@ Design: `docs/superpowers/specs/2026-09-06-obsbot-tiny2-joystick-app-design.md`
 ```bash
 sudo apt update
 sudo apt install -y build-essential cmake python3 python3-dev python3-pip python3-venv pkg-config
+
+tar -xzf libdev_v1.0.2.tar.gz
 
 python3 -m venv .venv
 source .venv/bin/activate
