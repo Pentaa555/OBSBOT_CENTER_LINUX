@@ -19,4 +19,9 @@ for info in bridge.list_devices():
 
 print("Waiting 10s for plug/unplug events (Ctrl+C to stop)...")
 time.sleep(10)
+
+for info in bridge.list_devices():
+    device = bridge.get_device_by_sn(info["sn"])
+    device.set_status_callback(lambda data: print("status:", data))
+
 bridge.close()
