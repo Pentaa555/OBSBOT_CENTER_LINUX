@@ -58,6 +58,7 @@ class PresetsPanel(QWidget):
         try:
             presets = device.list_presets()
         except bridge.ObsbotError:
+            QMessageBox.warning(self, "Error", "No se pudieron cargar los presets")
             presets = []
         for preset in presets:
             item = QListWidgetItem(preset["name"] or f"Preset {preset['id']}")

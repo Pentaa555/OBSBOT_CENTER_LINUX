@@ -79,3 +79,41 @@ def test_disconnect_clears_list_and_disables_buttons(qtbot):
     assert panel.list_widget.count() == 0
     assert not panel.add_btn.isEnabled()
     assert not panel.rename_btn.isEnabled()
+
+
+def test_list_presets_error_shows_warning(qtbot, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    device = bridge.add_device("SN1", "Tiny2")
+    device.add_preset("home", 0.0, 0.0, 0.0, 1.0)
+    panel = PresetsPanel(manager)
+    qtbot.addWidget(panel)
+
+    # Capture warning calls
+    warning_calls = []
+    original_warning = QMessageBox.warning
+
+    def mock_warning(*args, **kwargs):
+        warning_calls.append(args)
+        return None
+
+    monkeypatch.setattr(QMessageBox, "warning", mock_warning)
+
+    # Make list_presets raise an error
+    def raise_error():
+        raise bridge.ObsbotError("Test error")
+
+    monkeypatch.setattr(device, "list_presets", raise_error)
+
+    # Connect device, which triggers _refresh()
+    bridge.connect_device("SN1")
+
+    # Verify warning was shown
+    assert len(warning_calls) > 0
+    # warning_calls[0] is (widget, title, message)
+    assert warning_calls[0][1] == "Error"
+    assert warning_calls[0][2] == "No se pudieron cargar los presets"
+    # Verify list is empty
+    assert panel.list_widget.count() == 0
