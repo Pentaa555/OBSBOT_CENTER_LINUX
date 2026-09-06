@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 
 import obsbot_bridge as bridge
 
@@ -10,6 +10,8 @@ TICK_INTERVAL_MS = 50  # 20 Hz
 
 
 class GimbalController(QObject):
+    error_occurred = Signal(str)
+
     def __init__(self, device_manager, parent=None):
         super().__init__(parent)
         self._device_manager = device_manager
@@ -30,8 +32,8 @@ class GimbalController(QObject):
         self._last_sent = None
         try:
             device.set_ai_enabled(False)
-        except bridge.ObsbotError:
-            pass
+        except bridge.ObsbotError as e:
+            self.error_occurred.emit(str(e))
         self._timer.start()
 
     def update(self, x: float, y: float) -> None:
@@ -44,13 +46,13 @@ class GimbalController(QObject):
             return
         try:
             device.stop_gimbal()
-        except bridge.ObsbotError:
-            pass
+        except bridge.ObsbotError as e:
+            self.error_occurred.emit(str(e))
         if self._ai_was_enabled:
             try:
                 device.set_ai_enabled(True)
-            except bridge.ObsbotError:
-                pass
+            except bridge.ObsbotError as e:
+                self.error_occurred.emit(str(e))
 
     def _on_tick(self) -> None:
         device = self._device_manager.device
@@ -64,6 +66,6 @@ class GimbalController(QObject):
         pan = x * MAX_PAN_SPEED
         try:
             device.set_gimbal_speed(pitch, pan)
-        except bridge.ObsbotError:
-            pass
+        except bridge.ObsbotError as e:
+            self.error_occurred.emit(str(e))
         self._last_sent = self._pending

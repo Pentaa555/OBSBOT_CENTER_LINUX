@@ -1,5 +1,5 @@
 from app.gimbal_controller import GimbalController, MAX_PITCH_SPEED, MAX_PAN_SPEED
-from tests.fake_bridge import FakeDevice
+from tests.fake_bridge import FakeDevice, ObsbotError
 
 
 class FakeDeviceManager:
@@ -73,3 +73,25 @@ def test_tick_stops_itself_if_device_disconnects():
     controller._on_tick()
 
     assert not controller._timer.isActive()
+
+
+def test_error_occurred_signal_emitted_on_device_error(qtbot):
+    device = FakeDevice("SN1", "Tiny2")
+    manager = FakeDeviceManager(device)
+    controller = GimbalController(manager)
+
+    # Monkeypatch set_gimbal_speed to raise ObsbotError
+    def raise_error(*args, **kwargs):
+        raise ObsbotError("Device communication failed")
+    device.set_gimbal_speed = raise_error
+
+    # Capture emitted signals
+    emitted_errors = []
+    controller.error_occurred.connect(lambda msg: emitted_errors.append(msg))
+
+    controller.start()
+    controller.update(1.0, -1.0)
+    controller._on_tick()
+
+    # Verify the signal was emitted with the error message
+    assert emitted_errors == ["Device communication failed"]
