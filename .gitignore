@@ -1,1 +1,7 @@
 /libdev_v1.0.2/
+__pycache__/
+*.pyc
+.venv/
+bridge/build/
+*.so
+.pytest_cache/
