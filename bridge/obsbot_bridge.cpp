@@ -47,6 +47,12 @@ PYBIND11_MODULE(obsbot_bridge, m)
 		.value("TinySE", ObsbotProdTinySE)
 		.export_values();
 
+	py::enum_<Device::AiVerticalTrackType>(m, "TrackMode")
+		.value("Standard", Device::AiVTrackStandard)
+		.value("Headroom", Device::AiVTrackHeadroom)
+		.value("Motion", Device::AiVTrackMotion)
+		.export_values();
+
 	py::class_<Device, std::shared_ptr<Device>>(m, "Device")
 		.def_property_readonly("sn", &Device::devSn)
 		.def_property_readonly("name", [](Device &d) { return d.devName(); })
@@ -67,6 +73,29 @@ PYBIND11_MODULE(obsbot_bridge, m)
 				},
 				nullptr);
 			d.enableDevStatusCallback(true);
+		})
+		.def("set_gimbal_speed", [](Device &d, double pitch, double pan) {
+			check_ok(d.aiSetGimbalSpeedCtrlR(pitch, pan),
+				 "set_gimbal_speed");
+		})
+		.def("stop_gimbal", [](Device &d) {
+			check_ok(d.aiSetGimbalStop(), "stop_gimbal");
+		})
+		.def("set_ai_enabled", [](Device &d, bool enabled) {
+			check_ok(d.aiSetEnabledR(enabled), "set_ai_enabled");
+		})
+		.def("set_tracking_mode", [](Device &d,
+					      Device::AiVerticalTrackType mode) {
+			check_ok(d.aiSetTrackingModeR(mode), "set_tracking_mode");
+		})
+		.def("get_gimbal_angle", [](Device &d) {
+			Device::AiGimbalStateInfo info{};
+			check_ok(d.aiGetGimbalStateR(&info), "get_gimbal_angle");
+			py::dict out;
+			out["pitch"] = info.pitch_euler;
+			out["yaw"] = info.yaw_euler;
+			out["roll"] = info.roll_euler;
+			return out;
 		});
 
 	m.def("get_device_by_sn", [](const std::string &sn) {
