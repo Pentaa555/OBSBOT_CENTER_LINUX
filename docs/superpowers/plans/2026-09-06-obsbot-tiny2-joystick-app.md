@@ -44,13 +44,17 @@
 
 **Files:**
 - Create: `requirements.txt`
-- Create: `.gitignore`
+- Modify: `.gitignore` (already exists, ignoring the extracted `libdev_v1.0.2/`
+  directory from the SDK-vendoring setup commit — add to it, don't
+  overwrite it)
 - Create: `app/__init__.py`
 - Create: `app/widgets/__init__.py`
+- Create: `tests/__init__.py`
 - Create: `README.md`
 
 **Interfaces:**
-- Produces: the directory layout every later task writes into.
+- Produces: the directory layout every later task writes into, including
+  `app` and `tests` as proper Python packages (both have `__init__.py`).
 
 - [ ] **Step 1: Create `requirements.txt`**
 
@@ -61,7 +65,12 @@ pytest>=7.4
 pytest-qt>=4.2
 ```
 
-- [ ] **Step 2: Create `.gitignore`**
+- [ ] **Step 2: Extend the existing `.gitignore`**
+
+`.gitignore` already exists in the repo root (it was created when the
+vendored SDK tarball was committed, and already ignores the extracted
+`libdev_v1.0.2/` directory). Add these lines to it, keeping the existing
+`/libdev_v1.0.2/` line intact:
 
 ```
 __pycache__/
@@ -72,6 +81,12 @@ bridge/build/
 .pytest_cache/
 ```
 
+- [ ] **Step 2b: Verify the merged file has both the old and new lines**
+
+Run: `cat .gitignore`
+Expected: contains `/libdev_v1.0.2/` (pre-existing) AND the six lines
+just added above.
+
 - [ ] **Step 3: Create empty package markers**
 
 `app/__init__.py`:
@@ -81,6 +96,16 @@ bridge/build/
 `app/widgets/__init__.py`:
 ```python
 ```
+
+`tests/__init__.py`:
+```python
+```
+
+(Explicit, even though Python 3 supports namespace packages without
+`__init__.py`: `app/` already has one, and later tasks do
+`from tests.fake_bridge import ...` — keeping `tests/` a regular package
+too avoids depending on pytest's import-mode/rootdir behavior to resolve
+that import correctly.)
 
 - [ ] **Step 4: Create a README stub (filled in fully in Task 14)**
 
@@ -96,7 +121,7 @@ project (Task 14).
 - [ ] **Step 5: Commit**
 
 ```bash
-git add requirements.txt .gitignore app/__init__.py app/widgets/__init__.py README.md
+git add requirements.txt .gitignore app/__init__.py app/widgets/__init__.py tests/__init__.py README.md
 git commit -m "chore: scaffold project layout"
 ```
 
@@ -385,11 +410,18 @@ static py::dict status_to_dict(const Device::CameraStatus &status)
 
 - [ ] **Step 2: Register the exception type and the status callback method**
 
-Add right after `py::class_<Device, ...>` is opened in `PYBIND11_MODULE`
-(before its closing `;`), i.e. chain another `.def(...)` onto the existing
-`py::class_<Device, std::shared_ptr<Device>>(m, "Device")` declaration:
+The `Device` class binding is one single chained C++ statement, built up
+across this and later tasks. Right now (from Task 3) it ends with:
 
 ```cpp
+		.def_property_readonly("product_type", &Device::productType);
+```
+
+Find that exact line and replace it with (note the `;` moves to the end of
+the new last method — the whole thing stays one statement):
+
+```cpp
+		.def_property_readonly("product_type", &Device::productType)
 		.def("set_status_callback", [](Device &d, py::function callback) {
 			auto shared_cb = std::make_shared<py::function>(std::move(callback));
 			d.setDevStatusCallbackFunc(
@@ -409,8 +441,8 @@ Add right after `py::class_<Device, ...>` is opened in `PYBIND11_MODULE`
 		});
 ```
 
-And, at the very start of `PYBIND11_MODULE` body (before the `ProductType`
-enum), register the exception:
+Separately, at the very start of `PYBIND11_MODULE` body (before the
+`ProductType` enum), register the exception:
 
 ```cpp
 	py::register_exception<ObsbotError>(m, "ObsbotError");
@@ -471,8 +503,17 @@ Add next to the existing `ProductType` enum in `PYBIND11_MODULE`:
 
 - [ ] **Step 2: Add the gimbal control methods**
 
-Chain onto the `Device` class definition (after `set_status_callback`):
+The `Device` class binding (see Task 4) currently ends with:
 ```cpp
+			d.enableDevStatusCallback(true);
+		});
+```
+
+Find that exact `});` line (the end of the `set_status_callback` method
+added in Task 4) and replace it with:
+```cpp
+			d.enableDevStatusCallback(true);
+		})
 		.def("set_gimbal_speed", [](Device &d, double pitch, double pan) {
 			check_ok(d.aiSetGimbalSpeedCtrlR(pitch, pan),
 				 "set_gimbal_speed");
@@ -553,8 +594,19 @@ git commit -m "feat(bridge): add gimbal speed control, AI enable, tracking mode"
 
 - [ ] **Step 1: Add the zoom methods**
 
-Chain onto the `Device` class definition:
+The `Device` class binding (see Task 5) currently ends with:
 ```cpp
+			out["roll"] = info.roll_euler;
+			return out;
+		});
+```
+
+Find that exact `});` line (the end of the `get_gimbal_angle` method added
+in Task 5) and replace it with:
+```cpp
+			out["roll"] = info.roll_euler;
+			return out;
+		})
 		.def("set_zoom", [](Device &d, float zoom) {
 			check_ok(d.cameraSetZoomAbsoluteR(zoom), "set_zoom");
 		})
@@ -619,8 +671,19 @@ At the top of `bridge/obsbot_bridge.cpp`, alongside the other includes
 
 - [ ] **Step 2: Add the preset methods**
 
-Chain onto the `Device` class definition:
+The `Device` class binding (see Task 6) currently ends with:
 ```cpp
+			check_ok(d.cameraGetZoomAbsoluteR(zoom), "get_zoom");
+			return zoom;
+		});
+```
+
+Find that exact `});` line (the end of the `get_zoom` method added in
+Task 6) and replace it with:
+```cpp
+			check_ok(d.cameraGetZoomAbsoluteR(zoom), "get_zoom");
+			return zoom;
+		})
 		.def("list_presets", [](Device &d) {
 			Device::DevDataArray ids{};
 			check_ok(d.aiGetGimbalPresetListR(&ids), "list_presets");
