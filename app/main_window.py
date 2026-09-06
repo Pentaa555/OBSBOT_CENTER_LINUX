@@ -25,6 +25,9 @@ class MainWindow(QMainWindow):
         self.joystick.moved.connect(self.gimbal_controller.update)
         self.joystick.released.connect(self.gimbal_controller.stop)
 
+        self.gimbal_controller.error_occurred.connect(self.statusBar().showMessage)
+        self.status_panel.error_occurred.connect(self.statusBar().showMessage)
+
         central = QWidget()
         root = QHBoxLayout(central)
         left = QVBoxLayout()

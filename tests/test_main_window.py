@@ -29,3 +29,14 @@ def test_joystick_wired_to_gimbal_controller(qtbot):
 
     window.joystick.released.emit()
     assert not window.gimbal_controller._timer.isActive()
+
+
+def test_error_signals_wired_to_status_bar(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+
+    window.gimbal_controller.error_occurred.emit("boom")
+    assert window.statusBar().currentMessage() == "boom"
+
+    window.status_panel.error_occurred.emit("oops")
+    assert window.statusBar().currentMessage() == "oops"
