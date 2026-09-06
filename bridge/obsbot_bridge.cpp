@@ -96,6 +96,14 @@ PYBIND11_MODULE(obsbot_bridge, m)
 			out["yaw"] = info.yaw_euler;
 			out["roll"] = info.roll_euler;
 			return out;
+		})
+		.def("set_zoom", [](Device &d, float zoom) {
+			check_ok(d.cameraSetZoomAbsoluteR(zoom), "set_zoom");
+		})
+		.def("get_zoom", [](Device &d) {
+			float zoom = 0.f;
+			check_ok(d.cameraGetZoomAbsoluteR(zoom), "get_zoom");
+			return zoom;
 		});
 
 	m.def("get_device_by_sn", [](const std::string &sn) {
