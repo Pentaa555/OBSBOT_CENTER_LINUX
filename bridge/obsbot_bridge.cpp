@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <cstring>
 
 #include <dev/devs.hpp>
 #include <dev/dev.hpp>
@@ -104,6 +105,53 @@ PYBIND11_MODULE(obsbot_bridge, m)
 			float zoom = 0.f;
 			check_ok(d.cameraGetZoomAbsoluteR(zoom), "get_zoom");
 			return zoom;
+		})
+		.def("list_presets", [](Device &d) {
+			Device::DevDataArray ids{};
+			check_ok(d.aiGetGimbalPresetListR(&ids), "list_presets");
+			py::list out;
+			for (int32_t i = 0; i < ids.len; ++i) {
+				int32_t id = ids.data_int32[i];
+				Device::PresetPosInfo info{};
+				check_ok(d.aiGetGimbalPresetInfoWithIdR(&info, id),
+					 "get_preset_info");
+				py::dict item;
+				item["id"] = id;
+				item["name"] = std::string(info.name,
+							    static_cast<size_t>(info.name_len));
+				item["pitch"] = info.pitch;
+				item["yaw"] = info.yaw;
+				item["roll"] = info.roll;
+				item["zoom"] = info.zoom;
+				out.append(item);
+			}
+			return out;
+		})
+		.def("add_preset", [](Device &d, const std::string &name,
+				       float pitch, float yaw, float roll,
+				       float zoom) {
+			Device::PresetPosInfo info{};
+			info.id = 0;
+			info.pitch = pitch;
+			info.yaw = yaw;
+			info.roll = roll;
+			info.zoom = zoom;
+			std::string truncated = name.substr(0, 63);
+			memcpy(info.name, truncated.c_str(), truncated.size());
+			info.name_len = static_cast<int32_t>(truncated.size());
+			check_ok(d.aiAddGimbalPresetR(&info), "add_preset");
+			return info.id;
+		})
+		.def("delete_preset", [](Device &d, int32_t id) {
+			check_ok(d.aiDelGimbalPresetR(id), "delete_preset");
+		})
+		.def("goto_preset", [](Device &d, int32_t id) {
+			check_ok(d.aiTrgGimbalPresetR(id), "goto_preset");
+		})
+		.def("rename_preset", [](Device &d, int32_t id,
+					  const std::string &name) {
+			check_ok(d.aiSetGimbalPresetNameWithIdR(name, id),
+				 "rename_preset");
 		});
 
 	m.def("get_device_by_sn", [](const std::string &sn) {
