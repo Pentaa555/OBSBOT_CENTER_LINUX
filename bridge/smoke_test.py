@@ -16,12 +16,12 @@ for info in bridge.list_devices():
     print(info)
     device = bridge.get_device_by_sn(info["sn"])
     print("  ->", device.sn, device.name, device.product_type)
-
-print("Waiting 10s for plug/unplug events (Ctrl+C to stop)...")
-time.sleep(10)
-
-for info in bridge.list_devices():
-    device = bridge.get_device_by_sn(info["sn"])
+    # Registered BEFORE the sleep below: status callbacks fire every two
+    # or three seconds, so they need the whole wait window to show up.
     device.set_status_callback(lambda data: print("status:", data))
+
+print("Waiting 10s for plug/unplug events and status callbacks "
+      "(Ctrl+C to stop)...")
+time.sleep(10)
 
 bridge.close()

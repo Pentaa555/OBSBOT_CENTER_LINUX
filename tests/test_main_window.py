@@ -31,6 +31,19 @@ def test_joystick_wired_to_gimbal_controller(qtbot):
     assert not window.gimbal_controller._timer.isActive()
 
 
+def test_shutdown_stops_gimbal_before_closing_bridge(qtbot):
+    window = MainWindow()
+    qtbot.addWidget(window)
+    window.device_manager.device = FakeDevice("SN1", "Tiny2")
+    window.joystick.pressed.emit()
+    assert window.gimbal_controller._timer.isActive()
+
+    window.shutdown()
+
+    assert not window.gimbal_controller._timer.isActive()
+    assert ("stop_gimbal",) in window.device_manager.device.calls
+
+
 def test_error_signals_wired_to_status_bar(qtbot):
     window = MainWindow()
     qtbot.addWidget(window)

@@ -23,6 +23,22 @@ static void check_ok(int32_t ret, const char *what)
 	}
 }
 
+/// DevDataArray's int32 view is a fixed 16-entry array (see
+/// libdev's dev.hpp), and `len` comes straight off the device, so it is
+/// never trusted as an index bound without clamping first.
+static constexpr int32_t kMaxPresetSlots = 16;
+
+static int32_t clamp_preset_list_len(int32_t len)
+{
+	if (len < 0) {
+		return 0;
+	}
+	if (len > kMaxPresetSlots) {
+		return kMaxPresetSlots;
+	}
+	return len;
+}
+
 static py::dict status_to_dict(const Device::CameraStatus &status)
 {
 	py::dict d;
@@ -109,8 +125,9 @@ PYBIND11_MODULE(obsbot_bridge, m)
 		.def("list_presets", [](Device &d) {
 			Device::DevDataArray ids{};
 			check_ok(d.aiGetGimbalPresetListR(&ids), "list_presets");
+			const int32_t len = clamp_preset_list_len(ids.len);
 			py::list out;
-			for (int32_t i = 0; i < ids.len; ++i) {
+			for (int32_t i = 0; i < len; ++i) {
 				int32_t id = ids.data_int32[i];
 				Device::PresetPosInfo info{};
 				check_ok(d.aiGetGimbalPresetInfoWithIdR(&info, id),
@@ -130,8 +147,35 @@ PYBIND11_MODULE(obsbot_bridge, m)
 		.def("add_preset", [](Device &d, const std::string &name,
 				       float pitch, float yaw, float roll,
 				       float zoom) {
+			// The SDK does not allocate preset ids for us:
+			// aiAddGimbalPresetR writes to whatever slot number is
+			// in info.id, overwriting that slot if it already
+			// exists. So ask the device which ids are in use and
+			// take the lowest free one.
+			Device::DevDataArray ids{};
+			check_ok(d.aiGetGimbalPresetListR(&ids), "add_preset");
+			const int32_t len = clamp_preset_list_len(ids.len);
+			bool used[kMaxPresetSlots] = {false};
+			for (int32_t i = 0; i < len; ++i) {
+				const int32_t existing = ids.data_int32[i];
+				if (existing >= 0 && existing < kMaxPresetSlots) {
+					used[existing] = true;
+				}
+			}
+			int32_t new_id = -1;
+			for (int32_t i = 0; i < kMaxPresetSlots; ++i) {
+				if (!used[i]) {
+					new_id = i;
+					break;
+				}
+			}
+			if (new_id < 0) {
+				throw ObsbotError(
+					"add_preset failed: no free preset slot (max 16)");
+			}
+
 			Device::PresetPosInfo info{};
-			info.id = 0;
+			info.id = new_id;
 			info.pitch = pitch;
 			info.yaw = yaw;
 			info.roll = roll;
@@ -159,13 +203,21 @@ PYBIND11_MODULE(obsbot_bridge, m)
 	});
 
 	m.def("set_device_changed_callback", [](py::function callback) {
-		static py::function stored_callback;
-		stored_callback = std::move(callback);
+		// Intentionally leaked: a py::function held in a function-local
+		// static would be destroyed during C++ static teardown, i.e.
+		// after Py_Finalize, and its Py_DECREF would run against an
+		// already-torn-down interpreter (classic pybind11 crash at exit).
+		static py::function *stored_callback = nullptr;
+		if (stored_callback == nullptr) {
+			stored_callback = new py::function(std::move(callback));
+		} else {
+			*stored_callback = std::move(callback);
+		}
 		Devices::get().setDevChangedCallback(
 			[](std::string sn, bool connected, void *) {
 				py::gil_scoped_acquire acquire;
 				try {
-					stored_callback(sn, connected);
+					(*stored_callback)(sn, connected);
 				} catch (const std::exception &e) {
 					std::cerr << "device changed callback error: "
 						  << e.what() << std::endl;
@@ -174,7 +226,11 @@ PYBIND11_MODULE(obsbot_bridge, m)
 			nullptr);
 	});
 
-	m.def("close", []() { Devices::get().close(); });
+	// GIL released for the duration: Devices::close() joins the SDK's
+	// detection thread, and this bridge's own callbacks acquire the GIL
+	// from that thread — holding it here would deadlock the join.
+	m.def("close", []() { Devices::get().close(); },
+	      py::call_guard<py::gil_scoped_release>());
 
 	m.def("list_devices", []() {
 		py::list out;

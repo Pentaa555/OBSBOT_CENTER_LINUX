@@ -39,6 +39,11 @@ class JoystickWidget(QWidget):
             self._update_from_pos(event.position())
 
     def mouseReleaseEvent(self, event):
+        # Qt can deliver a release to a widget that never got the matching
+        # press; ignore those so they don't re-trigger the stop/AI-restore
+        # path from stale state.
+        if not self._dragging:
+            return
         self._dragging = False
         self._handle = QPointF(0.0, 0.0)
         self.update()

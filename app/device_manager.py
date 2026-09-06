@@ -4,6 +4,15 @@ from PySide6.QtCore import QObject, Signal
 
 import obsbot_bridge as bridge
 
+# Only the tiny/tiny2/tinySE family is supported: the bridge's
+# status_to_dict reads the `status.tiny.*` arm of a C union, which is only
+# valid for these products. Any other OBSBOT device is silently ignored.
+_SUPPORTED_PRODUCT_TYPES = frozenset({
+    bridge.ProductType.Tiny2,
+    bridge.ProductType.Tiny2Lite,
+    bridge.ProductType.TinySE,
+})
+
 
 class DeviceManager(QObject):
     device_connected = Signal(str, str)
@@ -32,6 +41,8 @@ class DeviceManager(QObject):
                 return
             device = bridge.get_device_by_sn(sn)
             if device is None:
+                return
+            if device.product_type not in _SUPPORTED_PRODUCT_TYPES:
                 return
             self.device = device
             self._sn = sn

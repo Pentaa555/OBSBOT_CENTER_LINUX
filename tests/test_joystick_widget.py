@@ -55,6 +55,21 @@ def test_release_resets_to_center_and_emits_zero(qtbot):
     assert released == [True]
 
 
+def test_release_without_press_does_nothing(qtbot):
+    widget = JoystickWidget()
+    qtbot.addWidget(widget)
+    widget.resize(200, 200)
+    received = []
+    widget.moved.connect(lambda x, y: received.append((x, y)))
+    released = []
+    widget.released.connect(lambda: released.append(True))
+
+    qtbot.mouseRelease(widget, Qt.LeftButton, pos=_center(widget))
+
+    assert received == []
+    assert released == []
+
+
 def test_small_movement_inside_deadzone_emits_zero(qtbot):
     widget = JoystickWidget()
     qtbot.addWidget(widget)

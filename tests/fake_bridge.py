@@ -8,7 +8,12 @@ class ObsbotError(Exception):
 
 
 class ProductType:
+    # Values match the real SDK's ObsbotProductType enum (dev.hpp) for
+    # hygiene; only their distinctness actually matters to the fake.
     Tiny2 = 2
+    Tiny2Lite = 3
+    Meet = 5  # deliberately unsupported, for the device-filter test
+    TinySE = 12
 
 
 class TrackMode:
@@ -18,10 +23,11 @@ class TrackMode:
 
 
 class FakeDevice:
-    def __init__(self, sn: str, name: str):
+    def __init__(self, sn: str, name: str, product_type=None):
         self.sn = sn
         self.name = name
-        self.product_type = ProductType.Tiny2
+        self.product_type = (product_type if product_type is not None
+                             else ProductType.Tiny2)
         self.calls: list[tuple] = []
         self._status_callback = None
         self._zoom = 1.0
@@ -92,13 +98,14 @@ class FakeBridgeModule:
         self._changed_callback = None
         self.closed = False
 
-    def add_device(self, sn: str, name: str) -> FakeDevice:
+    def add_device(self, sn: str, name: str,
+                   product_type=None) -> FakeDevice:
         """Create the device, but do NOT fire the connected signal yet —
         call connect_device() separately once any listeners (e.g. a widget
         constructed after this call) are ready. Splitting these two steps
         lets tests pre-populate a device (e.g. with presets) before the
         connected signal is observed."""
-        device = FakeDevice(sn, name)
+        device = FakeDevice(sn, name, product_type=product_type)
         self._devices[sn] = device
         return device
 

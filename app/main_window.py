@@ -45,4 +45,8 @@ class MainWindow(QMainWindow):
         self.device_manager.start()
 
     def shutdown(self) -> None:
+        # Stop first: quitting mid-drag would otherwise leave the physical
+        # gimbal panning with AI tracking disabled after the process exits.
+        # GimbalController.stop() is a no-op with no device/drag active.
+        self.gimbal_controller.stop()
         self.device_manager.shutdown()

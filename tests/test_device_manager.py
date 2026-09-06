@@ -52,6 +52,17 @@ def test_status_update_populates_last_status_and_emits(qtbot):
     assert manager.last_status == {"zoom_ratio": 42}
 
 
+def test_unsupported_product_type_is_ignored(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    bridge.add_device("SN1", "Some Meet Camera",
+                      product_type=bridge.ProductType.Meet)
+
+    manager.start()
+
+    assert manager.device is None
+
+
 def test_shutdown_closes_bridge():
     bridge = sys.modules["obsbot_bridge"]
     manager = DeviceManager()
