@@ -84,10 +84,41 @@ def test_error_occurred_signal_emitted_on_device_error(qtbot):
     def raise_error(*args, **kwargs):
         raise bridge.ObsbotError("Device communication failed")
     device.set_zoom = raise_error
+    device.set_zoom_with_speed = raise_error
 
     emitted_errors = []
     panel.error_occurred.connect(lambda msg: emitted_errors.append(msg))
 
     panel.zoom_slider.setValue(42)
 
-    assert emitted_errors == ["Device communication failed"]
+    qtbot.waitUntil(lambda: emitted_errors == ["Device communication failed"], timeout=1000)
+
+
+def test_zoom_labels_use_camera_range(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = StatusPanel(manager)
+    qtbot.addWidget(panel)
+    device = bridge.add_device("SN1", "Tiny2")
+    device.get_zoom_range = lambda: {"min": 1.0, "max": 4.0, "step": 0.01}
+    bridge.connect_device("SN1")
+
+    assert panel.zoom_value_input.maximum() == 4.0
+    panel.zoom_value_input.setValue(2.5)
+
+    assert panel.zoom_slider.value() == 50
+    qtbot.waitUntil(lambda: ("set_zoom", 2.5) in device.calls, timeout=1000)
+
+
+def test_stale_zoom_status_does_not_override_user_request(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = StatusPanel(manager)
+    qtbot.addWidget(panel)
+    device = bridge.add_device("SN1", "Tiny2")
+    bridge.connect_device("SN1")
+
+    panel.zoom_slider.setValue(35)
+    device.push_status({"zoom_ratio": 100})
+
+    assert panel.zoom_slider.value() == 35

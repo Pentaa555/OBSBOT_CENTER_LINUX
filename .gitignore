@@ -5,3 +5,4 @@ __pycache__/
 bridge/build/
 *.so
 .pytest_cache/
+.kiro/

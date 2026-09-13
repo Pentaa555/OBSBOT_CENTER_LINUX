@@ -29,7 +29,16 @@ class JoystickWidget(QWidget):
         center = self.rect().center()
         return QPointF(center.x(), center.y())
 
+    def _is_inside_circle(self, pos: QPointF) -> bool:
+        center = self._center()
+        dx = pos.x() - center.x()
+        dy = pos.y() - center.y()
+        return math.hypot(dx, dy) <= self._radius()
+
     def mousePressEvent(self, event):
+        if not self._is_inside_circle(event.position()):
+            event.ignore()
+            return
         self._dragging = True
         self._update_from_pos(event.position())
         self.pressed.emit()

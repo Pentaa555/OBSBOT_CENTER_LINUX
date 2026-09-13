@@ -117,3 +117,42 @@ def test_list_presets_error_shows_warning(qtbot, monkeypatch):
     assert warning_calls[0][2] == "No se pudieron cargar los presets"
     # Verify list is empty
     assert panel.list_widget.count() == 0
+
+
+def test_update_preset_calls_add_preset_with_same_id(qtbot, monkeypatch):
+    from PySide6.QtWidgets import QMessageBox
+
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    device = bridge.add_device("SN1", "Tiny2")
+    preset_id = device.add_preset("home", 0.0, 0.0, 0.0, 1.0)
+    panel = PresetsPanel(manager)
+    qtbot.addWidget(panel)
+    bridge.connect_device("SN1")
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *args, **kwargs: QMessageBox.Yes)
+    monkeypatch.setattr(QMessageBox, "information", lambda *args, **kwargs: None)
+
+    panel.list_widget.setCurrentRow(0)
+    panel.update_btn.click()
+
+    add_calls = [c for c in device.calls if c[0] == "add_preset"]
+    assert len(add_calls) >= 2  # initial add + update
+    last_call = add_calls[-1]
+    assert last_call[1] == "home"
+    assert last_call[-1] == preset_id
+
+
+def test_preset_action_arrow_has_update_rename_delete_menu(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    device = bridge.add_device("SN1", "Tiny2")
+    preset_id = device.add_preset("home", 0.0, 0.0, 0.0, 1.0)
+    panel = PresetsPanel(manager)
+    qtbot.addWidget(panel)
+    bridge.connect_device("SN1")
+
+    assert preset_id in panel.preset_action_buttons
+    assert panel.preset_action_buttons[preset_id].arrowType().name == "RightArrow"
+    assert [action.text() for action in panel.preset_menus[preset_id].actions()
+            if not action.isSeparator()] == ["Actualizar", "Renombrar", "Borrar"]

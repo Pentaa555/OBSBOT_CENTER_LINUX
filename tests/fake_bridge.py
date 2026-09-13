@@ -10,6 +10,8 @@ class ObsbotError(Exception):
 class ProductType:
     # Values match the real SDK's ObsbotProductType enum (dev.hpp) for
     # hygiene; only their distinctness actually matters to the fake.
+    Tiny = 0
+    Tiny4k = 1
     Tiny2 = 2
     Tiny2Lite = 3
     Meet = 5  # deliberately unsupported, for the device-filter test
@@ -33,6 +35,12 @@ class FakeDevice:
         self._zoom = 1.0
         self._presets: dict[int, dict] = {}
         self._next_preset_id = 1
+        self._image = {
+            "brightness": 50,
+            "contrast": 50,
+            "saturation": 50,
+            "sharpness": 50,
+        }
 
     def set_status_callback(self, fn):
         self._status_callback = fn
@@ -60,19 +68,74 @@ class FakeDevice:
         self._zoom = zoom
         self.calls.append(("set_zoom", zoom))
 
+    def set_zoom_with_speed(self, zoom: float, speed: int) -> None:
+        self._zoom = zoom
+        self.calls.append(("set_zoom", zoom))
+
     def get_zoom(self) -> float:
         return self._zoom
+
+    def get_zoom_range(self) -> dict:
+        return {"min": 1.0, "max": 2.0, "step": 0.01}
+
+    # --- image adjustments -------------------------------------------------
+    def _image_range(self) -> dict:
+        return {"min": 0, "max": 100, "step": 1, "default": 50}
+
+    def set_brightness(self, v: int) -> None:
+        self._image["brightness"] = v
+        self.calls.append(("set_brightness", v))
+
+    def get_brightness(self) -> int:
+        return self._image["brightness"]
+
+    def get_brightness_range(self) -> dict:
+        return self._image_range()
+
+    def set_contrast(self, v: int) -> None:
+        self._image["contrast"] = v
+        self.calls.append(("set_contrast", v))
+
+    def get_contrast(self) -> int:
+        return self._image["contrast"]
+
+    def get_contrast_range(self) -> dict:
+        return self._image_range()
+
+    def set_saturation(self, v: int) -> None:
+        self._image["saturation"] = v
+        self.calls.append(("set_saturation", v))
+
+    def get_saturation(self) -> int:
+        return self._image["saturation"]
+
+    def get_saturation_range(self) -> dict:
+        return self._image_range()
+
+    def set_sharpness(self, v: int) -> None:
+        self._image["sharpness"] = v
+        self.calls.append(("set_sharpness", v))
+
+    def get_sharpness(self) -> int:
+        return self._image["sharpness"]
+
+    def get_sharpness_range(self) -> dict:
+        return self._image_range()
 
     def list_presets(self) -> list:
         return list(self._presets.values())
 
-    def add_preset(self, name, pitch, yaw, roll, zoom) -> int:
-        preset_id = self._next_preset_id
-        self._next_preset_id += 1
+    def add_preset(self, name, pitch, yaw, roll, zoom, id: int = -1) -> int:
+        preset_id = id if id >= 0 else self._next_preset_id
+        if id < 0:
+            self._next_preset_id += 1
+        elif id >= self._next_preset_id:
+            self._next_preset_id = id + 1
         self._presets[preset_id] = {
             "id": preset_id, "name": name, "pitch": pitch,
             "yaw": yaw, "roll": roll, "zoom": zoom,
         }
+        self.calls.append(("add_preset", name, pitch, yaw, roll, zoom, preset_id))
         return preset_id
 
     def delete_preset(self, preset_id: int) -> None:

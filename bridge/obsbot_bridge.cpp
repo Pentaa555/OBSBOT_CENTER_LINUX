@@ -27,6 +27,12 @@ static void check_ok(int32_t ret, const char *what)
 /// libdev's dev.hpp), and `len` comes straight off the device, so it is
 /// never trusted as an index bound without clamping first.
 static constexpr int32_t kMaxPresetSlots = 16;
+static constexpr int32_t kMaxPresetSlotsTiny1 = 3;
+
+static inline bool is_tiny1_family(ObsbotProductType type)
+{
+	return type == ObsbotProdTiny || type == ObsbotProdTiny4k;
+}
 
 static int32_t clamp_preset_list_len(int32_t len)
 {
@@ -43,7 +49,8 @@ static py::dict status_to_dict(const Device::CameraStatus &status)
 {
 	py::dict d;
 	d["zoom_ratio"] = status.tiny.zoom_ratio;
-	d["ai_mode"] = status.tiny.ai_mode;
+	d["ai_target"] = status.tiny.ai_target;
+	d["ai_mode"] = (status.tiny.ai_mode != 0 || status.tiny.ai_target != 0) ? 1 : 0;
 	d["dev_status"] = status.tiny.dev_status;
 	d["vertical"] = status.tiny.vertical;
 	d["hdr"] = status.tiny.hdr;
@@ -96,37 +103,174 @@ PYBIND11_MODULE(obsbot_bridge, m)
 				 "set_gimbal_speed");
 		})
 		.def("stop_gimbal", [](Device &d) {
-			check_ok(d.aiSetGimbalStop(), "stop_gimbal");
+			// Speed 0 stops the motors immediately across all hardware models
+			d.aiSetGimbalSpeedCtrlR(0.0, 0.0);
+			if (!is_tiny1_family(d.productType())) {
+				check_ok(d.aiSetGimbalStop(), "stop_gimbal");
+			}
 		})
 		.def("set_ai_enabled", [](Device &d, bool enabled) {
-			check_ok(d.aiSetEnabledR(enabled), "set_ai_enabled");
+			if (is_tiny1_family(d.productType())) {
+				d.aiSetEnabledR(enabled);
+				d.aiSetTargetSelectR(enabled);
+			} else {
+				check_ok(d.aiSetEnabledR(enabled), "set_ai_enabled");
+			}
 		})
 		.def("set_tracking_mode", [](Device &d,
 					      Device::AiVerticalTrackType mode) {
 			check_ok(d.aiSetTrackingModeR(mode), "set_tracking_mode");
 		})
 		.def("get_gimbal_angle", [](Device &d) {
-			Device::AiGimbalStateInfo info{};
-			check_ok(d.aiGetGimbalStateR(&info), "get_gimbal_angle");
 			py::dict out;
-			out["pitch"] = info.pitch_euler;
-			out["yaw"] = info.yaw_euler;
-			out["roll"] = info.roll_euler;
+			if (is_tiny1_family(d.productType())) {
+				float xyz[3] = {0.f};
+				check_ok(d.gimbalGetAttitudeInfoR(xyz),
+					 "get_gimbal_angle");
+				out["roll"] = xyz[0];
+				out["pitch"] = xyz[1];
+				out["yaw"] = xyz[2];
+			} else {
+				Device::AiGimbalStateInfo info{};
+				check_ok(d.aiGetGimbalStateR(&info), "get_gimbal_angle");
+				out["pitch"] = info.pitch_euler;
+				out["yaw"] = info.yaw_euler;
+				out["roll"] = info.roll_euler;
+			}
 			return out;
 		})
 		.def("set_zoom", [](Device &d, float zoom) {
-			check_ok(d.cameraSetZoomAbsoluteR(zoom), "set_zoom");
+			// Normalized 1.0~2.0 absolute zoom. This is the path
+			// that reliably drives the Tiny2 firmware.
+			int32_t result;
+			{
+				py::gil_scoped_release release;
+				result = d.cameraSetZoomAbsoluteR(zoom);
+			}
+			check_ok(result, "set_zoom");
+		})
+		.def("set_zoom_with_speed", [](Device &d, float zoom, uint32_t speed) {
+			const uint32_t zoom_ratio = static_cast<uint32_t>(zoom * 100.0f + 0.5f);
+			int32_t result;
+			{
+				py::gil_scoped_release release;
+				result = d.cameraSetZoomWithSpeedAbsoluteR(zoom_ratio, speed);
+			}
+			check_ok(result, "set_zoom_with_speed");
 		})
 		.def("get_zoom", [](Device &d) {
 			float zoom = 0.f;
 			check_ok(d.cameraGetZoomAbsoluteR(zoom), "get_zoom");
 			return zoom;
 		})
+		.def("get_zoom_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeZoomAbsoluteR(range), "get_zoom_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			return out;
+		})
+		.def("set_brightness", [](Device &d, int32_t v) {
+			check_ok(d.cameraSetImageBrightnessR(v), "set_brightness");
+		})
+		.def("get_brightness", [](Device &d) {
+			int32_t v = 0;
+			check_ok(d.cameraGetImageBrightnessR(v), "get_brightness");
+			return v;
+		})
+		.def("get_brightness_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeImageBrightnessR(range),
+				 "get_brightness_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			out["default"] = range.default_;
+			return out;
+		})
+		.def("set_contrast", [](Device &d, int32_t v) {
+			check_ok(d.cameraSetImageContrastR(v), "set_contrast");
+		})
+		.def("get_contrast", [](Device &d) {
+			int32_t v = 0;
+			check_ok(d.cameraGetImageContrastR(v), "get_contrast");
+			return v;
+		})
+		.def("get_contrast_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeImageContrastR(range),
+				 "get_contrast_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			out["default"] = range.default_;
+			return out;
+		})
+		.def("set_saturation", [](Device &d, int32_t v) {
+			check_ok(d.cameraSetImageSaturationR(v), "set_saturation");
+		})
+		.def("get_saturation", [](Device &d) {
+			int32_t v = 0;
+			check_ok(d.cameraGetImageSaturationR(v), "get_saturation");
+			return v;
+		})
+		.def("get_saturation_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeImageSaturationR(range),
+				 "get_saturation_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			out["default"] = range.default_;
+			return out;
+		})
+		.def("set_sharpness", [](Device &d, int32_t v) {
+			check_ok(d.cameraSetImageSharpR(v), "set_sharpness");
+		})
+		.def("get_sharpness", [](Device &d) {
+			int32_t v = 0;
+			check_ok(d.cameraGetImageSharpR(v), "get_sharpness");
+			return v;
+		})
+		.def("get_sharpness_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeImageSharpR(range),
+				 "get_sharpness_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			out["default"] = range.default_;
+			return out;
+		})
 		.def("list_presets", [](Device &d) {
+			py::list out;
+			if (is_tiny1_family(d.productType())) {
+				for (int32_t i = 0; i < kMaxPresetSlotsTiny1; ++i) {
+					Device::PresetPosInfo info{};
+					if (d.aiGetGimbalPresetInfoWithIdR(&info, i) == RM_RET_OK &&
+					    info.name_len > 0) {
+						py::dict item;
+						item["id"] = i;
+						item["name"] = std::string(info.name,
+									    static_cast<size_t>(info.name_len));
+						item["pitch"] = info.pitch;
+						item["yaw"] = info.yaw;
+						item["roll"] = info.roll;
+						item["zoom"] = info.zoom;
+						out.append(item);
+					}
+				}
+				return out;
+			}
 			Device::DevDataArray ids{};
 			check_ok(d.aiGetGimbalPresetListR(&ids), "list_presets");
 			const int32_t len = clamp_preset_list_len(ids.len);
-			py::list out;
 			for (int32_t i = 0; i < len; ++i) {
 				int32_t id = ids.data_int32[i];
 				Device::PresetPosInfo info{};
@@ -146,32 +290,50 @@ PYBIND11_MODULE(obsbot_bridge, m)
 		})
 		.def("add_preset", [](Device &d, const std::string &name,
 				       float pitch, float yaw, float roll,
-				       float zoom) {
-			// The SDK does not allocate preset ids for us:
-			// aiAddGimbalPresetR writes to whatever slot number is
-			// in info.id, overwriting that slot if it already
-			// exists. So ask the device which ids are in use and
-			// take the lowest free one.
-			Device::DevDataArray ids{};
-			check_ok(d.aiGetGimbalPresetListR(&ids), "add_preset");
-			const int32_t len = clamp_preset_list_len(ids.len);
-			bool used[kMaxPresetSlots] = {false};
-			for (int32_t i = 0; i < len; ++i) {
-				const int32_t existing = ids.data_int32[i];
-				if (existing >= 0 && existing < kMaxPresetSlots) {
-					used[existing] = true;
-				}
-			}
-			int32_t new_id = -1;
-			for (int32_t i = 0; i < kMaxPresetSlots; ++i) {
-				if (!used[i]) {
-					new_id = i;
-					break;
-				}
-			}
+				       float zoom, int32_t target_id = -1) {
+			int32_t new_id = target_id;
 			if (new_id < 0) {
-				throw ObsbotError(
-					"add_preset failed: no free preset slot (max 16)");
+				if (is_tiny1_family(d.productType())) {
+					bool used[kMaxPresetSlotsTiny1] = {false};
+					for (int32_t i = 0; i < kMaxPresetSlotsTiny1; ++i) {
+						Device::PresetPosInfo info{};
+						if (d.aiGetGimbalPresetInfoWithIdR(&info, i) == RM_RET_OK &&
+						    info.name_len > 0) {
+							used[i] = true;
+						}
+					}
+					for (int32_t i = 0; i < kMaxPresetSlotsTiny1; ++i) {
+						if (!used[i]) {
+							new_id = i;
+							break;
+						}
+					}
+					if (new_id < 0) {
+						throw ObsbotError(
+							"add_preset failed: no free preset slot (max 3)");
+					}
+				} else {
+					Device::DevDataArray ids{};
+					check_ok(d.aiGetGimbalPresetListR(&ids), "add_preset");
+					const int32_t len = clamp_preset_list_len(ids.len);
+					bool used[kMaxPresetSlots] = {false};
+					for (int32_t i = 0; i < len; ++i) {
+						const int32_t existing = ids.data_int32[i];
+						if (existing >= 0 && existing < kMaxPresetSlots) {
+							used[existing] = true;
+						}
+					}
+					for (int32_t i = 0; i < kMaxPresetSlots; ++i) {
+						if (!used[i]) {
+							new_id = i;
+							break;
+						}
+					}
+					if (new_id < 0) {
+						throw ObsbotError(
+							"add_preset failed: no free preset slot (max 16)");
+					}
+				}
 			}
 
 			Device::PresetPosInfo info{};
@@ -185,11 +347,17 @@ PYBIND11_MODULE(obsbot_bridge, m)
 			info.name_len = static_cast<int32_t>(truncated.size());
 			check_ok(d.aiAddGimbalPresetR(&info), "add_preset");
 			return info.id;
-		})
+		}, py::arg("name"), py::arg("pitch"), py::arg("yaw"),
+		   py::arg("roll"), py::arg("zoom"), py::arg("id") = -1)
 		.def("delete_preset", [](Device &d, int32_t id) {
 			check_ok(d.aiDelGimbalPresetR(id), "delete_preset");
 		})
 		.def("goto_preset", [](Device &d, int32_t id) {
+			if (is_tiny1_family(d.productType())) {
+				// Disengage AI target tracking so gimbal moves freely to preset
+				d.aiSetTargetSelectR(false);
+				d.aiSetEnabledR(false);
+			}
 			check_ok(d.aiTrgGimbalPresetR(id), "goto_preset");
 		})
 		.def("rename_preset", [](Device &d, int32_t id,

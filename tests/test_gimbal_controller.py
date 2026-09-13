@@ -95,3 +95,40 @@ def test_error_occurred_signal_emitted_on_device_error(qtbot):
 
     # Verify the signal was emitted with the error message
     assert emitted_errors == ["Device communication failed"]
+
+
+def test_inversion_and_speed_scaling():
+    device = FakeDevice("SN1", "Tiny2")
+    manager = FakeDeviceManager(device)
+    controller = GimbalController(manager)
+
+    controller.start()
+    device.calls.clear()
+
+    # Normal tick: x=1.0, y=1.0 -> pitch = -40, pan = 60
+    controller.update(1.0, 1.0)
+    controller._on_tick()
+    speed_calls = [c for c in device.calls if c[0] == "set_gimbal_speed"]
+    assert speed_calls[-1] == ("set_gimbal_speed", -MAX_PITCH_SPEED, MAX_PAN_SPEED)
+
+    # Invert pan and tilt
+    controller.set_invert_pan(True)
+    controller.set_invert_tilt(True)
+    controller._last_sent = None
+    controller._on_tick()
+    speed_calls = [c for c in device.calls if c[0] == "set_gimbal_speed"]
+    assert speed_calls[-1] == ("set_gimbal_speed", MAX_PITCH_SPEED, -MAX_PAN_SPEED)
+
+    # Speed scale 50%
+    controller.set_speed_scale(0.5)
+    controller._last_sent = None
+    controller._on_tick()
+    speed_calls = [c for c in device.calls if c[0] == "set_gimbal_speed"]
+    assert speed_calls[-1] == ("set_gimbal_speed", MAX_PITCH_SPEED * 0.5, -MAX_PAN_SPEED * 0.5)
+
+    # Precision mode 25% factor
+    controller.set_precision_mode(True)
+    controller._last_sent = None
+    controller._on_tick()
+    speed_calls = [c for c in device.calls if c[0] == "set_gimbal_speed"]
+    assert speed_calls[-1] == ("set_gimbal_speed", MAX_PITCH_SPEED * 0.5 * 0.25, -MAX_PAN_SPEED * 0.5 * 0.25)

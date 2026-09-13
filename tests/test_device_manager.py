@@ -63,6 +63,17 @@ def test_unsupported_product_type_is_ignored(qtbot):
     assert manager.device is None
 
 
+def test_tiny_and_tiny4k_product_types_are_supported(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    for sn, ptype in [("SN_TINY", bridge.ProductType.Tiny),
+                      ("SN_TINY4K", bridge.ProductType.Tiny4k)]:
+        manager = DeviceManager()
+        bridge.add_device(sn, f"OBSBOT {sn}", product_type=ptype)
+        bridge.connect_device(sn)
+        assert manager.device is not None
+        assert manager.device.product_type == ptype
+
+
 def test_shutdown_closes_bridge():
     bridge = sys.modules["obsbot_bridge"]
     manager = DeviceManager()

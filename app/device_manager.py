@@ -8,6 +8,8 @@ import obsbot_bridge as bridge
 # status_to_dict reads the `status.tiny.*` arm of a C union, which is only
 # valid for these products. Any other OBSBOT device is silently ignored.
 _SUPPORTED_PRODUCT_TYPES = frozenset({
+    bridge.ProductType.Tiny,
+    bridge.ProductType.Tiny4k,
     bridge.ProductType.Tiny2,
     bridge.ProductType.Tiny2Lite,
     bridge.ProductType.TinySE,

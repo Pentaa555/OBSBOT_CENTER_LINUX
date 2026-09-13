@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=OBSBOT Control
+Comment=Control de cámara OBSBOT Tiny para Linux
+Exec=/home/ipuc/Documentos/obsbot/OBSBOT_CENTER_LINUX/run.sh
+Icon=camera-web
+Terminal=false
+Categories=AudioVideo;Video;
+StartupNotify=true
+Path=/home/ipuc/Documentos/obsbot/OBSBOT_CENTER_LINUX
+

@@ -83,3 +83,22 @@ def test_small_movement_inside_deadzone_emits_zero(qtbot):
     qtbot.mouseMove(widget, pos=tiny_offset)
 
     assert received[-1] == (0.0, 0.0)
+
+
+def test_press_outside_circle_does_not_start_movement(qtbot):
+    widget = JoystickWidget()
+    qtbot.addWidget(widget)
+    widget.resize(200, 200)
+    moved = []
+    pressed = []
+    widget.moved.connect(lambda x, y: moved.append((x, y)))
+    widget.pressed.connect(lambda: pressed.append(True))
+
+    qtbot.mousePress(
+        widget,
+        Qt.LeftButton,
+        pos=QPoint(widget.width() - 1, widget.height() // 2),
+    )
+
+    assert moved == []
+    assert pressed == []
