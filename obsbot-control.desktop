@@ -4,9 +4,10 @@ Type=Application
 Name=OBSBOT Control
 Comment=Control de cámara OBSBOT Tiny para Linux
 Exec=/home/ipuc/Documentos/obsbot/OBSBOT_CENTER_LINUX/run.sh
-Icon=camera-web
+Icon=/home/ipuc/Documentos/obsbot/OBSBOT_CENTER_LINUX/obsbot_logo.png
 Terminal=false
 Categories=AudioVideo;Video;
 StartupNotify=true
+StartupWMClass=OBSBOT Control
 Path=/home/ipuc/Documentos/obsbot/OBSBOT_CENTER_LINUX
 

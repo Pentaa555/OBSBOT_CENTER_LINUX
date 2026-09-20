@@ -6,3 +6,4 @@ bridge/build/
 *.so
 .pytest_cache/
 .kiro/
+obsbot-control.log

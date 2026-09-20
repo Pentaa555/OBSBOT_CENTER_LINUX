@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QSettings, Qt
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QMainWindow, QPushButton,
-    QTabWidget, QToolButton, QVBoxLayout, QWidget,
+    QApplication, QFrame, QHBoxLayout, QLabel, QMainWindow, QMenu,
+    QPushButton, QSystemTrayIcon, QTabWidget, QToolButton, QVBoxLayout,
+    QWidget,
 )
 
 from app.device_manager import DeviceManager
@@ -13,6 +15,8 @@ from app.widgets.image_panel import ImagePanel
 from app.widgets.joystick import JoystickWidget
 from app.widgets.presets_panel import PresetsPanel
 from app.widgets.status_panel import StatusPanel
+from app.widgets.system_panel import SystemPanel
+from app.widgets.video_format_panel import VideoFormatPanel
 
 
 class CollapsibleSection(QWidget):
@@ -64,6 +68,8 @@ class MainWindow(QMainWindow):
         self.status_panel = StatusPanel(self.device_manager, compact=True)
         self.presets_panel = PresetsPanel(self.device_manager)
         self.image_panel = ImagePanel(self.device_manager)
+        self.video_format_panel = VideoFormatPanel()
+        self.system_panel = SystemPanel(settings=self.settings)
 
         self.mode_button = self.controls_panel.mode_btn
         self.speed_button = QPushButton("‹")
@@ -95,6 +101,7 @@ class MainWindow(QMainWindow):
         self.gimbal_controller.error_occurred.connect(self.statusBar().showMessage)
         self.status_panel.error_occurred.connect(self.statusBar().showMessage)
         self.image_panel.error_occurred.connect(self.statusBar().showMessage)
+        self.video_format_panel.error_occurred.connect(self.statusBar().showMessage)
         self.device_manager.device_connected.connect(self._on_device_connected)
         self.device_manager.device_disconnected.connect(self._on_device_disconnected)
 
@@ -152,12 +159,20 @@ class MainWindow(QMainWindow):
         more_tab = QWidget()
         more_tab_layout = QVBoxLayout(more_tab)
         more_tab_layout.addWidget(self.controls_panel)
+        more_tab_layout.addWidget(self.system_panel)
         more_tab_layout.addStretch(1)
+
+        # --- Tab: Video (virtual camera resolution/fps) -------------------
+        video_tab = QWidget()
+        video_tab_layout = QVBoxLayout(video_tab)
+        video_tab_layout.addWidget(self.video_format_panel)
+        video_tab_layout.addStretch(1)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(console_tab, "Console")
         self.tabs.addTab(image_tab, "Image")
         self.tabs.addTab(more_tab, "More")
+        self.tabs.addTab(video_tab, "Video")
 
         central = QWidget()
         root = QVBoxLayout(central)
@@ -169,12 +184,77 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central)
         self._set_camera_controls_visible(False)
 
+        # System tray: lets the app keep running in the background when the
+        # window is closed (see closeEvent). Guarded because a tray isn't
+        # always available (e.g. headless/CI or a desktop with no tray).
+        self._force_quit = False
+        self.tray_icon = None
+        self._setup_tray_icon()
+
         # Must run last: DeviceManager's constructor only registers the SDK
         # callback, it does not scan for an already-connected camera (see
         # Task 8) — start() does that scan, and by now every widget above
         # has already connected to device_connected/device_disconnected/status_changed,
         # so none of them miss the initial event if a camera is already plugged in.
         self.device_manager.start()
+
+    def _setup_tray_icon(self) -> None:
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+        icon = self.windowIcon()
+        if icon.isNull():
+            app_icon = QApplication.windowIcon()
+            icon = app_icon if not app_icon.isNull() else QIcon()
+        self.tray_icon = QSystemTrayIcon(icon, self)
+        self.tray_icon.setToolTip("OBSBOT Control")
+
+        menu = QMenu()
+        show_action = QAction("Mostrar", self)
+        show_action.triggered.connect(self._show_from_tray)
+        quit_action = QAction("Salir", self)
+        quit_action.triggered.connect(self._quit_from_tray)
+        menu.addAction(show_action)
+        menu.addSeparator()
+        menu.addAction(quit_action)
+        self.tray_icon.setContextMenu(menu)
+        self.tray_icon.activated.connect(self._on_tray_activated)
+        self.tray_icon.show()
+
+    def _on_tray_activated(self, reason) -> None:
+        # A left click (Trigger) toggles the window back into view.
+        if reason == QSystemTrayIcon.Trigger:
+            self._show_from_tray()
+
+    def _show_from_tray(self) -> None:
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def _quit_from_tray(self) -> None:
+        self._force_quit = True
+        self.close()
+
+    def closeEvent(self, event) -> None:
+        # If tray-minimising is enabled and a tray exists, closing the window
+        # just hides it (the app keeps running and stays reachable from the
+        # tray). A real quit goes through the tray's "Salir" action, which
+        # sets _force_quit first.
+        tray_enabled = self.system_panel.minimize_to_tray
+        if not self._force_quit and tray_enabled and self.tray_icon is not None:
+            event.ignore()
+            self.hide()
+            self.tray_icon.showMessage(
+                "OBSBOT Control",
+                "La app sigue en segundo plano. Ábrela desde la bandeja.",
+                QSystemTrayIcon.Information,
+                3000,
+            )
+            return
+        # Real shutdown path.
+        self.shutdown()
+        if self.tray_icon is not None:
+            self.tray_icon.hide()
+        event.accept()
 
     def _set_camera_controls_visible(self, visible: bool) -> None:
         self.no_device_label.setVisible(not visible)
@@ -196,9 +276,15 @@ class MainWindow(QMainWindow):
         self.speed_popup.setVisible(not self.speed_popup.isVisible())
 
     def shutdown(self) -> None:
+        # Idempotent: both closeEvent (real-quit path) and the app's
+        # aboutToQuit signal call this, so guard against running twice.
+        if getattr(self, "_shutdown_done", False):
+            return
+        self._shutdown_done = True
         # Stop first: quitting mid-drag would otherwise leave the physical
         # gimbal panning with AI tracking disabled after the process exits.
         # GimbalController.stop() is a no-op with no device/drag active.
         self.gimbal_controller.stop()
         self.status_panel.shutdown()
+        self.video_format_panel.shutdown()
         self.device_manager.shutdown()
