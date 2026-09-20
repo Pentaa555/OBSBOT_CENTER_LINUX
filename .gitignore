@@ -7,3 +7,4 @@ bridge/build/
 .pytest_cache/
 .kiro/
 obsbot-control.log
+obsbot-vcam.log
