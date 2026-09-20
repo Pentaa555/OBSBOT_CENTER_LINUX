@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from PySide6.QtCore import QSettings, Qt
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import (
@@ -8,6 +10,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app import resources
 from app.device_manager import DeviceManager
 from app.gimbal_controller import GimbalController
 from app.widgets.controls_panel import ControlsPanel
@@ -20,32 +23,54 @@ from app.widgets.video_format_panel import VideoFormatPanel
 
 
 class CollapsibleSection(QWidget):
-    """A titled content section that can be collapsed with its arrow."""
+    """A titled content section styled as a block, collapsible via a right
+    aligned arrow (down = open, right = closed)."""
 
     def __init__(self, title: str, content: QWidget, parent=None):
         super().__init__(parent)
+        self.setObjectName("collapsibleSection")
+
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("sectionTitle")
+
         self.toggle_button = QToolButton()
-        self.toggle_button.setText(title)
+        self.toggle_button.setObjectName("sectionToggle")
         self.toggle_button.setCheckable(True)
         self.toggle_button.setChecked(True)
         self.toggle_button.setAutoRaise(True)
-        self.toggle_button.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         self.toggle_button.setArrowType(Qt.DownArrow)
         self.toggle_button.clicked.connect(self._toggle_content)
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.addWidget(self.toggle_button)
+        header.addWidget(self.title_label)
         header.addStretch()
+        header.addWidget(self.toggle_button)
 
+        # Inner content keeps side padding, but the divider spans full width
+        # (edge to edge), so it lives in an outer layout with no margins.
         self.content = content
+        inner = QVBoxLayout()
+        inner.setContentsMargins(14, 12, 14, 12)
+        inner.setSpacing(10)
+        inner.addLayout(header)
+        inner.addWidget(content)
+
+        # Thick dark divider line beneath the section, full width.
+        self.divider = QFrame()
+        self.divider.setObjectName("sectionDivider")
+        self.divider.setFrameShape(QFrame.HLine)
+        self.divider.setFrameShadow(QFrame.Plain)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(header)
-        layout.addWidget(content)
+        layout.setSpacing(0)
+        layout.addLayout(inner)
+        layout.addWidget(self.divider)
 
     def _toggle_content(self, expanded: bool) -> None:
         self.content.setVisible(expanded)
+        # Down when open, right when closed (as requested).
         self.toggle_button.setArrowType(
             Qt.DownArrow if expanded else Qt.RightArrow)
 
@@ -68,7 +93,7 @@ class MainWindow(QMainWindow):
         self.status_panel = StatusPanel(self.device_manager, compact=True)
         self.presets_panel = PresetsPanel(self.device_manager)
         self.image_panel = ImagePanel(self.device_manager)
-        self.video_format_panel = VideoFormatPanel()
+        self.video_format_panel = VideoFormatPanel(settings=self.settings)
         self.system_panel = SystemPanel(settings=self.settings)
 
         self.mode_button = self.controls_panel.mode_btn
@@ -140,13 +165,19 @@ class MainWindow(QMainWindow):
         gimbal_section_layout.addLayout(gimbal_header)
         gimbal_section_layout.addLayout(gimbal_content)
         self.gimbal_section = gimbal_section
+        self.gimbal_view_section = CollapsibleSection(
+            "View and Gimbal", gimbal_section)
 
         # --- Tab: Console (camera control) --------------------------------
+        # Ordered to mirror OBSBOT Center: Presets on top, then the gimbal
+        # joystick / zoom, then AI tracking.
         console_tab = QWidget()
         console_layout = QVBoxLayout(console_tab)
-        console_layout.addWidget(self.ai_section)
+        console_layout.setContentsMargins(0, 0, 0, 0)
+        console_layout.setSpacing(0)
         console_layout.addWidget(self.presets_section)
-        console_layout.addWidget(gimbal_section)
+        console_layout.addWidget(self.gimbal_view_section)
+        console_layout.addWidget(self.ai_section)
         console_layout.addStretch(1)
 
         # --- Tab: Image (image/beauty adjustments) ------------------------
@@ -155,27 +186,30 @@ class MainWindow(QMainWindow):
         image_tab_layout.addWidget(self.image_panel)
         image_tab_layout.addStretch(1)
 
-        # --- Tab: More (control configuration) ----------------------------
+        # --- Tab: More (virtual camera + control configuration) -----------
+        # Everything that used to live in a separate "Video" tab now sits
+        # here alongside the control and system settings, grouped in
+        # collapsible sections so the tab doesn't get overwhelming.
         more_tab = QWidget()
         more_tab_layout = QVBoxLayout(more_tab)
+        more_tab_layout.setContentsMargins(0, 0, 0, 0)
+        more_tab_layout.setSpacing(0)
+        self.video_section = CollapsibleSection(
+            "Cámara virtual", self.video_format_panel)
+        more_tab_layout.addWidget(self.video_section)
         more_tab_layout.addWidget(self.controls_panel)
         more_tab_layout.addWidget(self.system_panel)
         more_tab_layout.addStretch(1)
-
-        # --- Tab: Video (virtual camera resolution/fps) -------------------
-        video_tab = QWidget()
-        video_tab_layout = QVBoxLayout(video_tab)
-        video_tab_layout.addWidget(self.video_format_panel)
-        video_tab_layout.addStretch(1)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(console_tab, "Console")
         self.tabs.addTab(image_tab, "Image")
         self.tabs.addTab(more_tab, "More")
-        self.tabs.addTab(video_tab, "Video")
 
         central = QWidget()
         root = QVBoxLayout(central)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
         self.no_device_label = QLabel("No hay dispositivo conectado")
         self.no_device_label.setAlignment(Qt.AlignCenter)
         root.addWidget(self.no_device_label)
@@ -201,11 +235,29 @@ class MainWindow(QMainWindow):
     def _setup_tray_icon(self) -> None:
         if not QSystemTrayIcon.isSystemTrayAvailable():
             return
+        # Resolve a concrete icon: window/app icon may not be set yet at
+        # construction time, and an empty QIcon makes trays (notably GNOME's
+        # AppIndicator) draw nothing ("No Icon set"). Fall back to loading
+        # the logo file directly, then to a theme icon.
         icon = self.windowIcon()
         if icon.isNull():
-            app_icon = QApplication.windowIcon()
-            icon = app_icon if not app_icon.isNull() else QIcon()
+            icon = QApplication.windowIcon()
+        if icon.isNull():
+            logo = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                "obsbot_logo.png",
+            )
+            if os.path.exists(logo):
+                icon = QIcon(logo)
+        if icon.isNull():
+            # OBSBOT Center's own app icon, bundled under resources.
+            app_icon = resources.image_path("app")
+            if os.path.exists(app_icon):
+                icon = QIcon(app_icon)
+        if icon.isNull():
+            icon = QIcon.fromTheme("camera-web")
         self.tray_icon = QSystemTrayIcon(icon, self)
+        self.setWindowIcon(icon)  # keep window and tray icons consistent
         self.tray_icon.setToolTip("OBSBOT Control")
 
         menu = QMenu()
@@ -230,6 +282,11 @@ class MainWindow(QMainWindow):
         self.raise_()
         self.activateWindow()
 
+    # Public alias used by the single-instance guard when a second launch
+    # asks the running instance to surface its window.
+    def show_from_tray(self) -> None:
+        self._show_from_tray()
+
     def _quit_from_tray(self) -> None:
         self._force_quit = True
         self.close()
@@ -245,9 +302,11 @@ class MainWindow(QMainWindow):
             self.hide()
             self.tray_icon.showMessage(
                 "OBSBOT Control",
-                "La app sigue en segundo plano. Ábrela desde la bandeja.",
+                "La app sigue en segundo plano. Ábrela desde el icono de la "
+                "bandeja, o vuelve a abrir OBSBOT Control desde el menú de "
+                "aplicaciones para traerla al frente.",
                 QSystemTrayIcon.Information,
-                3000,
+                4000,
             )
             return
         # Real shutdown path.

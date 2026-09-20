@@ -153,6 +153,9 @@ def test_preset_action_arrow_has_update_rename_delete_menu(qtbot):
     bridge.connect_device("SN1")
 
     assert preset_id in panel.preset_action_buttons
-    assert panel.preset_action_buttons[preset_id].arrowType().name == "RightArrow"
+    action_button = panel.preset_action_buttons[preset_id]
+    # A single down-arrow glyph (▾), not Qt's built-in arrow type.
+    assert action_button.text() == "\u25be"
+    assert action_button.arrowType().name == "NoArrow"
     assert [action.text() for action in panel.preset_menus[preset_id].actions()
             if not action.isSeparator()] == ["Actualizar", "Renombrar", "Borrar"]

@@ -16,14 +16,17 @@ from __future__ import annotations
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
-    QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout,
+    QWidget,
 )
 
+from app import autostart
 from app.video_formats import (
     V4l2NotAvailable, VideoMode, enumerate_modes,
 )
 from app.virtual_camera import (
-    DependencyMissing, VirtualCamera, VirtualCameraConfig,
+    DependencyMissing, FLIP_LABELS, FLIP_METHODS, VirtualCamera,
+    VirtualCameraConfig,
 )
 
 
@@ -32,14 +35,22 @@ class VideoFormatPanel(QWidget):
 
     error_occurred = Signal(str)
 
+    ORIENTATION_KEY = "video/flip"
+    WIDTH_KEY = "video/width"
+    HEIGHT_KEY = "video/height"
+    FPS_KEY = "video/fps"
+    FOURCC_KEY = "video/fourcc"
+
     def __init__(
         self,
         real_device: str = "/dev/video0",
         virtual_camera: VirtualCamera | None = None,
+        settings=None,
         parent=None,
     ):
         super().__init__(parent)
         self._real_device = real_device
+        self._settings = settings
         self._camera = virtual_camera or VirtualCamera(
             VirtualCameraConfig(real_device=real_device)
         )
@@ -76,6 +87,24 @@ class VideoFormatPanel(QWidget):
 
         layout.addLayout(picker_row)
 
+        # Orientation selector: corrects an inverted/mirrored image. Its
+        # value is remembered across sessions and can be changed live while
+        # streaming (the pipeline is restarted with the new flip).
+        orient_row = QHBoxLayout()
+        orient_row.addWidget(QLabel("Orientación"))
+        self.orientation_combo = QComboBox()
+        for key in FLIP_METHODS:
+            self.orientation_combo.addItem(FLIP_LABELS[key], userData=key)
+        if settings is not None:
+            saved = settings.value(self.ORIENTATION_KEY, "none", type=str)
+            i = self.orientation_combo.findData(saved)
+            if i >= 0:
+                self.orientation_combo.setCurrentIndex(i)
+        self.orientation_combo.currentIndexChanged.connect(
+            self._on_orientation_changed)
+        orient_row.addWidget(self.orientation_combo, 1)
+        layout.addLayout(orient_row)
+
         # One-time setup button: only shown until the virtual camera has been
         # configured to auto-load at boot, after which it's redundant.
         self.setup_button = QPushButton("Configurar cámara virtual (una vez)")
@@ -98,12 +127,45 @@ class VideoFormatPanel(QWidget):
         button_row.addWidget(self.stop_button)
         layout.addLayout(button_row)
 
+        # Start the virtual camera automatically at login (runs the headless
+        # pipeline service, not the whole app). This is the stable path for
+        # OBS: the pipeline comes up once at boot and isn't torn down each
+        # time the control app opens/closes.
+        self.autostart_vcam_check = QCheckBox(
+            "Iniciar cámara virtual al encender el equipo")
+        self.autostart_vcam_check.setChecked(autostart.is_vcam_enabled())
+        self.autostart_vcam_check.toggled.connect(
+            self._on_autostart_vcam_toggled)
+        layout.addWidget(self.autostart_vcam_check)
+
         self._update_setup_visibility()
 
         self.status_label = QLabel("Detenida")
         layout.addWidget(self.status_label)
 
         self.reload_modes()
+        self._sync_running_state()
+
+    def _sync_running_state(self) -> None:
+        """Reflect a pipeline that may already be running in another process.
+
+        The virtual camera can be running from the login service or a
+        previous session. Without this, the panel would always open showing
+        "Detenida" even while video is streaming. We detect the external
+        pipeline and set the label/buttons to match reality.
+        """
+        try:
+            running = self._camera.is_running_anywhere()
+        except Exception:
+            running = False
+        if running:
+            self.status_label.setText("Transmitiendo (cámara virtual activa)")
+            self.start_button.setEnabled(False)
+            self.stop_button.setEnabled(True)
+        else:
+            self.status_label.setText("Detenida")
+            self.start_button.setEnabled(True)
+            self.stop_button.setEnabled(False)
 
     def reload_modes(self) -> None:
         """Query the real camera and populate the resolution dropdown.
@@ -174,6 +236,9 @@ class VideoFormatPanel(QWidget):
     def _selected_mode(self) -> VideoMode | None:
         return self.fps_combo.currentData()
 
+    def _selected_flip(self) -> str:
+        return self.orientation_combo.currentData() or "none"
+
     def _on_start(self) -> None:
         mode = self._selected_mode()
         if mode is None:
@@ -182,20 +247,68 @@ class VideoFormatPanel(QWidget):
         try:
             self._camera.check_dependencies()
             self._camera.ensure_loopback()
-            self._camera.start(mode)
+            self._camera.start(mode, flip=self._selected_flip())
         except (DependencyMissing, Exception) as e:
             self.error_occurred.emit(str(e))
             self.status_label.setText("Error al iniciar")
             return
+        # Remember what worked so the login service can restart the exact
+        # same mode without the GUI.
+        self._save_mode(mode)
         self.status_label.setText(f"Transmitiendo {mode}")
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
+
+    def _save_mode(self, mode: VideoMode) -> None:
+        if self._settings is None:
+            return
+        self._settings.setValue(self.WIDTH_KEY, mode.width)
+        self._settings.setValue(self.HEIGHT_KEY, mode.height)
+        self._settings.setValue(self.FPS_KEY, float(mode.fps))
+        self._settings.setValue(self.FOURCC_KEY, mode.fourcc)
+        self._settings.sync()
+
+    def _on_autostart_vcam_toggled(self, checked: bool) -> None:
+        # Persist the current selection first so the login service starts
+        # the same mode the user just chose.
+        mode = self._selected_mode()
+        if mode is not None:
+            self._save_mode(mode)
+        if self._settings is not None:
+            self._settings.setValue(self.ORIENTATION_KEY, self._selected_flip())
+            self._settings.sync()
+        try:
+            autostart.set_vcam_enabled(checked)
+        except Exception as e:
+            self.error_occurred.emit(str(e))
 
     def _on_stop(self) -> None:
         self._camera.stop()
         self.status_label.setText("Detenida")
         self.start_button.setEnabled(True)
         self.stop_button.setEnabled(False)
+
+    def _on_orientation_changed(self, _index: int) -> None:
+        """Persist the flip choice and apply it live if already streaming."""
+        flip = self._selected_flip()
+        if self._settings is not None:
+            self._settings.setValue(self.ORIENTATION_KEY, flip)
+            self._settings.sync()
+        # If the virtual camera is running, restart it so the new flip takes
+        # effect immediately without the user re-clicking Start.
+        if self._camera.is_running:
+            mode = self._selected_mode()
+            if mode is None:
+                return
+            try:
+                self._camera.start(mode, flip=flip)
+            except (DependencyMissing, Exception) as e:
+                self.error_occurred.emit(str(e))
+                self.status_label.setText("Error al aplicar orientación")
+                self.start_button.setEnabled(True)
+                self.stop_button.setEnabled(False)
+                return
+            self.status_label.setText(f"Transmitiendo {mode}")
 
     def _update_setup_visibility(self) -> None:
         """Hide the setup button once the virtual camera is configured."""

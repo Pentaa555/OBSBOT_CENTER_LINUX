@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
 
 import obsbot_bridge as bridge
 
+from app import resources
+
 PRESET_ID_ROLE = 1000
 
 
@@ -153,18 +155,19 @@ class PresetsPanel(QWidget):
             self.preset_buttons[preset_id] = button
 
             action_button = QToolButton()
-            action_button.setArrowType(Qt.RightArrow)
+            action_button.setText("\u25be")  # ▾ single down arrow
+            action_button.setObjectName("presetActionButton")
             action_button.setToolTip("Acciones del preset")
             action_button.setAutoRaise(True)
             menu = QMenu(action_button)
-            menu.addAction("Actualizar").triggered.connect(
+            menu.addAction(resources.icon("confirm"), "Actualizar").triggered.connect(
                 lambda _checked=False, selected_id=preset_id:
                 self._run_preset_action(selected_id, self._on_update))
             menu.addAction("Renombrar").triggered.connect(
                 lambda _checked=False, selected_id=preset_id:
                 self._run_preset_action(selected_id, self._on_rename))
             menu.addSeparator()
-            menu.addAction("Borrar").triggered.connect(
+            menu.addAction(resources.icon("cancel"), "Borrar").triggered.connect(
                 lambda _checked=False, selected_id=preset_id:
                 self._run_preset_action(selected_id, self._on_delete))
             action_button.setMenu(menu)

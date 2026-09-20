@@ -15,6 +15,9 @@ class _FakeSettings:
     def setValue(self, key, value):
         self.store[key] = value
 
+    def sync(self):
+        pass
+
 
 def test_autostart_checkbox_reflects_disk_state(qtbot, monkeypatch):
     import app.widgets.system_panel as mod

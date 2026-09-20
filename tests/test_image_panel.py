@@ -101,3 +101,75 @@ def test_all_params_present(qtbot):
     assert names == {"brightness", "contrast", "saturation", "sharpness"}
     for name in names:
         assert name in panel._sliders
+
+
+def test_wb_connect_reflects_auto_state(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = ImagePanel(manager)
+    qtbot.addWidget(panel)
+    _connect(bridge, manager)
+
+    # Default fake state is auto: checkbox checked, temp slider disabled.
+    assert panel.wb_auto_checkbox.isEnabled()
+    assert panel.wb_auto_checkbox.isChecked()
+    assert not panel.wb_temp_slider.isEnabled()
+    assert panel.wb_temp_slider.maximum() == 6500
+
+
+def test_wb_toggle_manual_enables_temp_and_sends(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = ImagePanel(manager)
+    qtbot.addWidget(panel)
+    device = _connect(bridge, manager)
+
+    panel.wb_auto_checkbox.setChecked(False)  # -> manual
+
+    assert panel.wb_temp_slider.isEnabled()
+    # Turning manual on applies the current slider temperature immediately.
+    assert any(c[0] == "set_white_balance_manual" for c in device.calls)
+
+
+def test_wb_temp_slider_sends_when_manual(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = ImagePanel(manager)
+    qtbot.addWidget(panel)
+    device = _connect(bridge, manager)
+
+    panel.wb_auto_checkbox.setChecked(False)
+    panel.wb_temp_slider.setValue(4200)
+
+    qtbot.waitUntil(
+        lambda: ("set_white_balance_manual", 4200) in device.calls,
+        timeout=1000)
+    assert panel.wb_temp_value.text() == "4200 K"
+
+
+def test_wb_temp_slider_ignored_when_auto(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = ImagePanel(manager)
+    qtbot.addWidget(panel)
+    device = _connect(bridge, manager)
+
+    # Auto is on; moving the (disabled-logic) slider must not send manual WB.
+    device.calls.clear()
+    panel.wb_temp_slider.setValue(3000)
+    qtbot.wait(120)
+    assert not any(c[0] == "set_white_balance_manual" for c in device.calls)
+
+
+def test_wb_reset_returns_to_auto(qtbot):
+    bridge = sys.modules["obsbot_bridge"]
+    manager = DeviceManager()
+    panel = ImagePanel(manager)
+    qtbot.addWidget(panel)
+    device = _connect(bridge, manager)
+
+    panel.wb_auto_checkbox.setChecked(False)  # manual
+    panel._on_reset()
+
+    assert panel.wb_auto_checkbox.isChecked()
+    assert ("set_white_balance_auto",) in device.calls

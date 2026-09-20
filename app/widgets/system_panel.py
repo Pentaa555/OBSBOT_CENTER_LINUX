@@ -62,3 +62,6 @@ class SystemPanel(QWidget):
     def _on_tray_toggled(self, checked: bool) -> None:
         if self._settings is not None:
             self._settings.setValue(self.MINIMIZE_TO_TRAY_KEY, checked)
+            # Flush to disk now so the choice survives even if this process
+            # is killed rather than closed cleanly.
+            self._settings.sync()

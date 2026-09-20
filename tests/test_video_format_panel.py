@@ -9,11 +9,13 @@ class FakeCamera:
 
     def __init__(self, configured=False):
         self.started_with = None
+        self.started_flip = None
         self.stopped = False
         self.loopback_ensured = False
         self.deps_checked = False
         self.setup_called = False
         self._configured = configured
+        self._running = False
         from app.virtual_camera import VirtualCameraConfig
         self.config = VirtualCameraConfig()
 
@@ -30,11 +32,21 @@ class FakeCamera:
         self.setup_called = True
         self._configured = True
 
-    def start(self, mode):
+    def start(self, mode, flip="none"):
         self.started_with = mode
+        self.started_flip = flip
+        self._running = True
 
     def stop(self):
         self.stopped = True
+        self._running = False
+
+    @property
+    def is_running(self):
+        return self._running
+
+    def is_running_anywhere(self):
+        return self._running
 
 
 def _install_modes(monkeypatch, groups):
@@ -132,7 +144,7 @@ def test_start_error_is_reported_not_raised(qtbot, monkeypatch):
 
     cam = FakeCamera()
 
-    def boom(mode):
+    def boom(mode, flip="none"):
         raise RuntimeError("device busy")
 
     cam.start = boom
@@ -210,3 +222,172 @@ def test_setup_error_is_reported(qtbot, monkeypatch):
     p._on_setup()
 
     assert errors and "cancelada" in errors[0]
+
+
+class _FakeSettings:
+    def __init__(self):
+        self.store = {}
+        self.synced = 0
+
+    def value(self, key, default=None, type=None):
+        return self.store.get(key, default)
+
+    def setValue(self, key, value):
+        self.store[key] = value
+
+    def sync(self):
+        self.synced += 1
+
+
+def test_start_passes_selected_flip(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+
+    # Select the horizontal-mirror option.
+    i = p.orientation_combo.findData("horizontal")
+    p.orientation_combo.setCurrentIndex(i)
+    p._on_start()
+
+    assert cam.started_flip == "horizontal"
+
+
+def test_orientation_default_is_none(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+    p._on_start()
+    assert cam.started_flip == "none"
+
+
+def test_orientation_change_persisted_to_settings(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    settings = _FakeSettings()
+    p = VideoFormatPanel(virtual_camera=FakeCamera(configured=True),
+                         settings=settings)
+    qtbot.addWidget(p)
+
+    i = p.orientation_combo.findData("rotate-180")
+    p.orientation_combo.setCurrentIndex(i)
+    assert settings.store[VideoFormatPanel.ORIENTATION_KEY] == "rotate-180"
+
+
+def test_orientation_restored_from_settings(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    settings = _FakeSettings()
+    settings.store[VideoFormatPanel.ORIENTATION_KEY] = "vertical"
+    p = VideoFormatPanel(virtual_camera=FakeCamera(configured=True),
+                         settings=settings)
+    qtbot.addWidget(p)
+    assert p._selected_flip() == "vertical"
+
+
+def test_changing_orientation_while_running_restarts_with_new_flip(
+        qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+    p._on_start()
+    assert cam.is_running is True
+
+    i = p.orientation_combo.findData("horizontal")
+    p.orientation_combo.setCurrentIndex(i)
+
+    # The live change should have restarted the pipeline with the new flip.
+    assert cam.started_flip == "horizontal"
+
+
+def test_changing_orientation_while_stopped_does_not_start(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+
+    i = p.orientation_combo.findData("horizontal")
+    p.orientation_combo.setCurrentIndex(i)
+
+    # Not streaming, so no start should have happened from the change.
+    assert cam.started_with is None
+
+
+def test_start_saves_mode_to_settings(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    settings = _FakeSettings()
+    p = VideoFormatPanel(virtual_camera=FakeCamera(configured=True),
+                         settings=settings)
+    qtbot.addWidget(p)
+
+    p._on_start()
+
+    assert settings.store[VideoFormatPanel.WIDTH_KEY] == 1280
+    assert settings.store[VideoFormatPanel.HEIGHT_KEY] == 720
+    assert settings.store[VideoFormatPanel.FPS_KEY] == 60.0
+    assert settings.store[VideoFormatPanel.FOURCC_KEY] == "MJPG"
+
+
+def test_autostart_vcam_toggle_enables_entry_and_saves_mode(qtbot, monkeypatch):
+    import app.widgets.video_format_panel as mod
+    calls = []
+    monkeypatch.setattr(mod.autostart, "is_vcam_enabled", lambda: False)
+    monkeypatch.setattr(
+        mod.autostart, "set_vcam_enabled", lambda v: calls.append(v))
+
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    settings = _FakeSettings()
+    p = VideoFormatPanel(virtual_camera=FakeCamera(configured=True),
+                         settings=settings)
+    qtbot.addWidget(p)
+
+    p.autostart_vcam_check.setChecked(True)
+
+    assert calls == [True]
+    # Toggling on should have persisted the current mode for the login
+    # service to reuse.
+    assert settings.store[VideoFormatPanel.WIDTH_KEY] == 1280
+    assert settings.store[VideoFormatPanel.FOURCC_KEY] == "MJPG"
+
+
+def test_autostart_vcam_checkbox_reflects_disk_state(qtbot, monkeypatch):
+    import app.widgets.video_format_panel as mod
+    monkeypatch.setattr(mod.autostart, "is_vcam_enabled", lambda: True)
+    _install_modes(monkeypatch, [])
+    p = VideoFormatPanel(virtual_camera=FakeCamera(configured=True))
+    qtbot.addWidget(p)
+    assert p.autostart_vcam_check.isChecked() is True
+
+
+def test_panel_reflects_already_running_pipeline_on_open(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)
+    # Simulate a pipeline already running in another process at open time.
+    cam._running = True
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+
+    # The panel must show streaming state, not the default "Detenida".
+    assert "Transmitiendo" in p.status_label.text()
+    assert p.start_button.isEnabled() is False
+    assert p.stop_button.isEnabled() is True
+
+
+def test_panel_shows_stopped_when_nothing_running(qtbot, monkeypatch):
+    groups = [FormatGroup("MJPG", "", [VideoMode("MJPG", 1280, 720, 60.0)])]
+    _install_modes(monkeypatch, groups)
+    cam = FakeCamera(configured=True)  # not running
+    p = VideoFormatPanel(virtual_camera=cam)
+    qtbot.addWidget(p)
+    assert p.status_label.text() == "Detenida"
+    assert p.start_button.isEnabled() is True
+    assert p.stop_button.isEnabled() is False

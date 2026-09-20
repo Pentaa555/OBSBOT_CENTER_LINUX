@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import QPointF, Signal
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen
+from PySide6.QtCore import QPointF, Qt, Signal
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import QWidget
 
 DEADZONE = 0.08
-HANDLE_RADIUS = 14
+HANDLE_RADIUS = 15
 EDGE_MARGIN = 12
 
 
@@ -81,11 +81,45 @@ class JoystickWidget(QWidget):
         painter.setRenderHint(QPainter.Antialiasing)
         center = self._center()
         radius = self._radius()
-        painter.setPen(QPen(QColor(80, 80, 80), 2))
-        painter.setBrush(QBrush(QColor(30, 30, 30)))
+
+        # Outer ring (dark disc with a subtle rim), matching OBSBOT Center.
+        painter.setPen(QPen(QColor(58, 58, 58), 1))
+        painter.setBrush(QBrush(QColor(38, 38, 38)))
         painter.drawEllipse(center, radius, radius)
+
+        # Inner disc to give the ring some depth. A high ratio keeps the
+        # ring/border thin.
+        inner_radius = radius * 0.78
+        painter.setPen(QPen(QColor(70, 70, 70), 1))
+        painter.setBrush(QBrush(QColor(46, 46, 46)))
+        painter.drawEllipse(center, inner_radius, inner_radius)
+
+        # Four directional arrows in the ring band.
+        self._draw_arrows(painter, center, radius, inner_radius)
+
+        # Handle (white ball), offset by the current normalized position.
         handle_pos = QPointF(center.x() + self._handle.x() * radius,
-                              center.y() + self._handle.y() * radius)
-        painter.setPen(QPen(QColor(200, 30, 30), 2))
-        painter.setBrush(QBrush(QColor(220, 40, 40)))
+                             center.y() + self._handle.y() * radius)
+        painter.setPen(QPen(QColor(210, 210, 210), 1))
+        painter.setBrush(QBrush(QColor(245, 245, 245)))
         painter.drawEllipse(handle_pos, HANDLE_RADIUS, HANDLE_RADIUS)
+
+    def _draw_arrows(self, painter, center, radius, inner_radius) -> None:
+        band = (radius + inner_radius) / 2
+        size = max(4.0, radius * 0.05)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QBrush(QColor(150, 150, 150)))
+        cx, cy = center.x(), center.y()
+        # (tip, then two base corners) for up/down/left/right.
+        arrows = [
+            [QPointF(cx, cy - band - size), QPointF(cx - size, cy - band + size),
+             QPointF(cx + size, cy - band + size)],  # up
+            [QPointF(cx, cy + band + size), QPointF(cx - size, cy + band - size),
+             QPointF(cx + size, cy + band - size)],  # down
+            [QPointF(cx - band - size, cy), QPointF(cx - band + size, cy - size),
+             QPointF(cx - band + size, cy + size)],  # left
+            [QPointF(cx + band + size, cy), QPointF(cx + band - size, cy - size),
+             QPointF(cx + band - size, cy + size)],  # right
+        ]
+        for pts in arrows:
+            painter.drawPolygon(QPolygonF(pts))

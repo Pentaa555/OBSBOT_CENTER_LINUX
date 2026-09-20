@@ -248,6 +248,40 @@ PYBIND11_MODULE(obsbot_bridge, m)
 			out["default"] = range.default_;
 			return out;
 		})
+		.def("set_white_balance_auto", [](Device &d) {
+			// param is ignored in auto mode.
+			check_ok(d.cameraSetWhiteBalanceR(
+					 Device::DevWhiteBalanceAuto, 0),
+				 "set_white_balance_auto");
+		})
+		.def("set_white_balance_manual", [](Device &d, int32_t temp) {
+			// Manual white balance: param is the color temperature.
+			check_ok(d.cameraSetWhiteBalanceR(
+					 Device::DevWhiteBalanceManual, temp),
+				 "set_white_balance_manual");
+		})
+		.def("get_white_balance", [](Device &d) {
+			Device::DevWhiteBalanceType wb_type =
+				Device::DevWhiteBalanceAuto;
+			int32_t param = 0;
+			check_ok(d.cameraGetWhiteBalanceR(wb_type, param),
+				 "get_white_balance");
+			py::dict out;
+			out["auto"] = (wb_type == Device::DevWhiteBalanceAuto);
+			out["temp"] = param;
+			return out;
+		})
+		.def("get_white_balance_range", [](Device &d) {
+			Device::UvcParamRange range{};
+			check_ok(d.cameraGetRangeWhiteBalanceR(range),
+				 "get_white_balance_range");
+			py::dict out;
+			out["min"] = range.min_;
+			out["max"] = range.max_;
+			out["step"] = range.step_;
+			out["default"] = range.default_;
+			return out;
+		})
 		.def("list_presets", [](Device &d) {
 			py::list out;
 			if (is_tiny1_family(d.productType())) {

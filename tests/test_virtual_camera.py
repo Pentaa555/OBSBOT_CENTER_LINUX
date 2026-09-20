@@ -9,6 +9,32 @@ from app.virtual_camera import (
 )
 
 
+def test_is_running_anywhere_detects_external_pipeline(monkeypatch):
+    import app.virtual_camera as vc
+    cam = VirtualCamera(VirtualCameraConfig(virtual_nr=10))
+    # No local process, but an external pipeline is found.
+    monkeypatch.setattr(vc, "find_external_pipeline_pid", lambda dev: 4242)
+    assert cam.is_running is False
+    assert cam.is_running_anywhere() is True
+
+
+def test_is_running_anywhere_false_when_nothing_running(monkeypatch):
+    import app.virtual_camera as vc
+    cam = VirtualCamera(VirtualCameraConfig(virtual_nr=10))
+    monkeypatch.setattr(vc, "find_external_pipeline_pid", lambda dev: None)
+    assert cam.is_running_anywhere() is False
+
+
+def test_stop_kills_external_pipeline_when_no_local_proc(monkeypatch):
+    import app.virtual_camera as vc
+    cam = VirtualCamera(VirtualCameraConfig(virtual_nr=10))
+    monkeypatch.setattr(vc, "find_external_pipeline_pid", lambda dev: 4242)
+    killed = []
+    monkeypatch.setattr(vc.os, "kill", lambda pid, sig: killed.append(pid))
+    cam.stop()
+    assert killed == [4242]
+
+
 def test_modprobe_command_uses_exclusive_caps():
     cfg = VirtualCameraConfig(virtual_nr=10, card_label="OBSBOT Virtual")
     cmd = build_modprobe_command(cfg)
@@ -69,6 +95,34 @@ def test_gst_pipeline_rejects_unknown_format():
     cfg = VirtualCameraConfig()
     with pytest.raises(ValueError):
         build_gst_pipeline(cfg, VideoMode("XVID", 1280, 720, 30.0))
+
+
+def test_gst_pipeline_no_flip_by_default():
+    cfg = VirtualCameraConfig()
+    cmd = build_gst_pipeline(cfg, VideoMode("MJPG", 1280, 720, 60.0))
+    assert "videoflip" not in " ".join(cmd)
+
+
+def test_gst_pipeline_horizontal_flip():
+    cfg = VirtualCameraConfig()
+    cmd = build_gst_pipeline(
+        cfg, VideoMode("MJPG", 1280, 720, 60.0), flip="horizontal")
+    assert "videoflip" in cmd
+    assert "method=horizontal-flip" in cmd
+
+
+def test_gst_pipeline_rotate_180_flip():
+    cfg = VirtualCameraConfig()
+    cmd = build_gst_pipeline(
+        cfg, VideoMode("MJPG", 1280, 720, 60.0), flip="rotate-180")
+    assert "method=rotate-180" in cmd
+
+
+def test_gst_pipeline_rejects_unknown_flip():
+    cfg = VirtualCameraConfig()
+    with pytest.raises(ValueError):
+        build_gst_pipeline(
+            cfg, VideoMode("MJPG", 1280, 720, 60.0), flip="sideways")
 
 
 def test_start_stop_lifecycle_with_injected_spawner():

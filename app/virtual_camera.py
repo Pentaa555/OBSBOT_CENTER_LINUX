@@ -26,6 +26,7 @@ from __future__ import annotations
 import shlex
 import shutil
 import subprocess
+import os
 from dataclasses import dataclass
 
 from app.video_formats import VideoMode
@@ -47,6 +48,24 @@ _GST_ENCODING = {
     "MJPEG": "image/jpeg",
     "H264": "video/x-h264",
     "YUYV": "video/x-raw",
+}
+
+# User-facing flip options mapped to GstVideoFlipMethod values. "Inverted"
+# most commonly means either a horizontal mirror or an upside-down (180°)
+# image, so both are offered plus a plain vertical flip.
+FLIP_METHODS = {
+    "none": "none",
+    "horizontal": "horizontal-flip",  # left-right mirror
+    "vertical": "vertical-flip",      # top-bottom
+    "rotate-180": "rotate-180",       # upside down
+}
+
+# Human labels for the flip options (Spanish UI).
+FLIP_LABELS = {
+    "none": "Normal (sin voltear)",
+    "horizontal": "Espejo horizontal",
+    "vertical": "Voltear vertical",
+    "rotate-180": "Girar 180° (boca abajo)",
 }
 
 
@@ -93,6 +112,32 @@ def is_loopback_loaded() -> bool:
             return any(line.startswith("v4l2loopback ") for line in f)
     except OSError:
         return False
+
+
+def find_external_pipeline_pid(virtual_device: str) -> int | None:
+    """Return the PID of a GStreamer pipeline already feeding `virtual_device`.
+
+    The pipeline may have been started by the headless login service or by a
+    previous app session; because it runs in another process, the panel's
+    own VirtualCamera object doesn't know about it. We scan /proc for a
+    process whose command line writes to this virtual device, so the UI can
+    reflect the true "streaming" state instead of always showing "stopped".
+    """
+    needle = f"device={virtual_device}"
+    try:
+        pids = [name for name in os.listdir("/proc") if name.isdigit()]
+    except OSError:
+        return None
+    for pid in pids:
+        try:
+            with open(f"/proc/{pid}/cmdline", "rb") as f:
+                cmdline = f.read().replace(b"\x00", b" ").decode(
+                    "utf-8", "replace")
+        except OSError:
+            continue  # process vanished or not readable
+        if "gst-launch" in cmdline and needle in cmdline:
+            return int(pid)
+    return None
 
 
 # System files that make v4l2loopback load automatically at every boot with
@@ -152,10 +197,19 @@ def build_rmmod_command() -> list[str]:
     return _privilege_prefix() + ["modprobe", "-r", "v4l2loopback"]
 
 
-def build_gst_pipeline(config: VirtualCameraConfig, mode: VideoMode) -> list[str]:
+def build_gst_pipeline(
+    config: VirtualCameraConfig,
+    mode: VideoMode,
+    flip: str = "none",
+) -> list[str]:
     """Build the GStreamer command that pumps `mode` into the virtual device.
 
-    Raises ValueError for a pixel format we don't know how to handle.
+    `flip` inserts a videoflip element to correct an inverted/mirrored image
+    (the OBSBOT feed can come out flipped depending on mounting/firmware).
+    Accepted values are the keys of FLIP_METHODS.
+
+    Raises ValueError for a pixel format we don't know how to handle, or an
+    unknown flip method.
 
     gst-launch-1.0 expects each pipeline token as its own argv entry (the
     element name, each property, and the `!` links are all separate tokens).
@@ -167,6 +221,8 @@ def build_gst_pipeline(config: VirtualCameraConfig, mode: VideoMode) -> list[str
     encoding = _GST_ENCODING.get(mode.fourcc)
     if encoding is None:
         raise ValueError(f"Unsupported pixel format: {mode.fourcc}")
+    if flip not in FLIP_METHODS:
+        raise ValueError(f"Unknown flip method: {flip}")
 
     # Represent fps as an integer fraction where possible (GStreamer wants
     # framerate as a fraction, e.g. 60/1). 59.94-style values become n/1000.
@@ -188,6 +244,13 @@ def build_gst_pipeline(config: VirtualCameraConfig, mode: VideoMode) -> list[str
 
     # videoconvert guarantees a pixel layout the loopback/consumer accepts.
     stages.append("videoconvert")
+
+    # Insert the flip right before the sink, after decode/convert, so it
+    # operates on raw frames. "none" adds nothing to keep the pipeline lean.
+    gst_method = FLIP_METHODS[flip]
+    if gst_method != "none":
+        stages.append(f"videoflip method={gst_method}")
+
     stages.append(f"v4l2sink device={config.virtual_device} sync=false")
 
     pipeline_str = " ! ".join(stages)
@@ -266,8 +329,10 @@ class VirtualCamera:
     def remove_loopback(self) -> None:
         self._runner(build_rmmod_command(), check=False)
 
-    def start(self, mode: VideoMode) -> None:
+    def start(self, mode: VideoMode, flip: str = "none") -> None:
         """Start streaming `mode` from the real camera to the virtual one.
+
+        `flip` corrects an inverted/mirrored image (see FLIP_METHODS).
 
         The pipeline can die immediately for a very common reason: another
         app (usually OBS) already has the real camera open in a *different*
@@ -279,7 +344,7 @@ class VirtualCamera:
         """
         if self.is_running:
             self.stop()
-        cmd = build_gst_pipeline(self.config, mode)
+        cmd = build_gst_pipeline(self.config, mode, flip=flip)
         self._proc = self._spawner(
             cmd, stderr=subprocess.PIPE, stdout=subprocess.DEVNULL, text=True
         )
@@ -307,17 +372,36 @@ class VirtualCamera:
         )
 
     def stop(self) -> None:
-        if self._proc is None:
+        # Stop our own child if we started one.
+        if self._proc is not None:
+            self._proc.terminate()
+            try:
+                self._proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                self._proc.kill()
+                self._proc.wait(timeout=2)
+            finally:
+                self._proc = None
             return
-        self._proc.terminate()
-        try:
-            self._proc.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            self._proc.kill()
-            self._proc.wait(timeout=2)
-        finally:
-            self._proc = None
+        # Otherwise, stop an external pipeline (login service / previous
+        # session) feeding our virtual device, so "Detener" works regardless
+        # of which process started it.
+        pid = find_external_pipeline_pid(self.config.virtual_device)
+        if pid is not None:
+            import signal
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except OSError:
+                pass
 
     @property
     def is_running(self) -> bool:
+        """True if THIS object started a pipeline that is still alive."""
         return self._proc is not None and self._proc.poll() is None
+
+    def is_running_anywhere(self) -> bool:
+        """True if any process (this one, the login service, or a previous
+        session) is currently feeding the virtual device."""
+        if self.is_running:
+            return True
+        return find_external_pipeline_pid(self.config.virtual_device) is not None

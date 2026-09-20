@@ -41,6 +41,9 @@ class FakeDevice:
             "saturation": 50,
             "sharpness": 50,
         }
+        # White balance: auto by default, manual temperature in Kelvin.
+        self._wb_auto = True
+        self._wb_temp = 5000
 
     def set_status_callback(self, fn):
         self._status_callback = fn
@@ -121,6 +124,22 @@ class FakeDevice:
 
     def get_sharpness_range(self) -> dict:
         return self._image_range()
+
+    # --- white balance -----------------------------------------------------
+    def set_white_balance_auto(self) -> None:
+        self._wb_auto = True
+        self.calls.append(("set_white_balance_auto",))
+
+    def set_white_balance_manual(self, temp: int) -> None:
+        self._wb_auto = False
+        self._wb_temp = temp
+        self.calls.append(("set_white_balance_manual", temp))
+
+    def get_white_balance(self) -> dict:
+        return {"auto": self._wb_auto, "temp": self._wb_temp}
+
+    def get_white_balance_range(self) -> dict:
+        return {"min": 2800, "max": 6500, "step": 100, "default": 5000}
 
     def list_presets(self) -> list:
         return list(self._presets.values())

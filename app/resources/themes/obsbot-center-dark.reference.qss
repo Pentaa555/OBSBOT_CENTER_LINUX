@@ -1,0 +1,1051 @@
+/* Custom theme information. This will set the application's QPalette, as well as pass to QML via the RMTheme object.
+ * Can also use RMTheme::disabled, RMTheme::active, and RMTheme::inactive.
+ * Using it without will set all three (making 'active' a bit redundant) */
+RMTheme {
+    window: rgb(55, 58, 60); /* dark */
+    windowText: rgb(225, 224, 225); /* veryLight */
+    base: rgb(31, 30, 31); /* veryDark */
+    alternateBase: rgb(11, 10, 11); /* veryVeryDark */
+    text: rgb(225, 224, 225); /* veryLight */
+    buttons: rgb(88, 87, 88); /* kindaDark */
+    buttonText: rgb(225, 224, 225); /* veryLight */
+    brightText: rgb(200, 199, 200); /* lighter */
+
+    light: rgb(88, 87, 88); /* kindaDark */
+    mid: rgb(58, 57, 58); /* dark */
+    dark: rgb(31, 30, 31); /* veryDark */
+    shadow: rgb(11, 10, 11); /* veryVeryDark */
+
+    highlight: rgba(0, 0, 0, 0); /* transparent */
+    highlightedText: rgb(255, 255, 255);
+
+    link: rgb(114, 162, 255); /* RM blue */
+    linkVisited: rgb(114, 162, 255); /* RM blue */
+}
+
+RMTheme::disabled {
+    text: rgb(122, 121, 122); /* light */
+    buttonText: rgb(122, 121, 122); /* light */
+    brightText: rgb(122, 121, 122); /* light */
+}
+
+RMTheme::inactive {
+    highlight: rgb(48, 47, 48);
+    highlightedText: rgb(255, 255, 255);
+}
+
+/* Label */
+
+QLabel {
+    color: rgb(255, 255, 255);
+    background-color: transparent;
+    font-size: 14px;
+}
+
+QLabel:disabled {
+    color: rgba(255, 255, 255, 102);
+}
+
+QLabel[themeID="label_40"] {
+    font-size: 40px;
+}
+
+QLabel[themeID="label_24"] {
+    font-size: 24px;
+}
+
+QLabel[themeID="label_18"] {
+    font-size: 18px;
+}
+
+QLabel[themeID="label_16"] {
+    font-size: 16px;
+}
+
+QLabel[themeID="label_15"] {
+    font-size: 15px;
+}
+
+QLabel[themeID="label_14"] {
+    font-size: 14px;
+}
+
+QLabel[themeID="label_13"] {
+    font-size: 13px;
+}
+
+QLabel[themeID="label_12"] {
+    font-size: 12px;
+}
+
+QLabel[themeID="label_material"] {
+    font-size: 12px;
+    padding-bottom: 2px;
+}
+
+QLabel[themeID="label_10"] {
+    font-size: 10px;
+}
+
+QLabel[themeID="label_weight_300"] {
+    font-weight: 300;
+}
+
+QLabel[themeID="msg_title"] {
+    color: rgb(255, 255, 255);
+    font-size: 15px;
+}
+
+QLabel[themeID="lb_material_add_first"] {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+}
+
+.QWidget {
+    background-color: rgb(34, 36, 38);
+}
+
+.QWidget[themeID="w_title_color"] {
+    background-color: rgb(55, 58, 60);
+}
+
+QWidget[themeID="w_radius_b"] {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+.QWidget[themeID="w_title"] {
+    background-color: rgb(55, 58, 60);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.QWidget[themeID="w_title_mac"] {
+    background-color: rgb(255, 255, 255);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.QWidget[themeID="w_title_video"] {
+    background-color: rgb(34, 36, 38);
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.QWidget[themeID="w_msg"] {
+    background-color: rgb(21, 22, 23);
+}
+
+.QWidget#wAudioOutput, .QWidget#wMultiTakePhoto {
+    border-top: 1px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(64, 69, 72), stop: 0.66 rgb(63, 67, 69));
+    border-bottom: 1px solid rgb(32, 34, 35);
+    border-radius: 4px;
+    background-color: rgb(54, 58, 60);
+}
+
+QWidget#wSelect, QWidget#wBeautySelect, QWidget#wVideoSelect {
+    border-radius: 6px;
+    background-color: rgba(8, 10, 11, 1);
+}
+
+.QWidget[themeID="w_material_add_first"] {
+    background-color: rgb(21, 22, 23);
+    border-radius: 4px;
+}
+
+QFrame#linePanelLine, QFrame#lineVideoBackground, QFrame#lineVideoBeauty, QFrame#lineVideoFilter,
+    QFrame#lineBeautyPanelLine, QFrame#lineVideoBeautyMore {
+    border: 1px solid rgb(230, 0, 51);
+    background-color: rgb(230, 0, 51);
+    border-radius: 1px;
+}
+
+.QFrame[themeID="btn_checked"] {
+    border: 1px solid rgb(230, 0, 51);
+    background-color: rgb(230, 0, 51);
+    border-radius: 1px;
+}
+
+.QFrame[themeID="split_line"] {
+    border: 1px solid rgb(17, 17, 17);
+}
+
+/* QPushButton */
+.QPushButton#pbFunc1, .QPushButton#pbFunc2, .QPushButton#pbFunc3, .QPushButton#pbFunc4 {
+    border-radius: 4px;
+    border: 1px solid red;
+}
+
+.QPushButton[themeID="btn_title"] {
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_title"]:hover {
+    background-color: rgb(45, 48, 50);
+}
+
+.QPushButton[themeID="btn_title"]:pressed {
+    background-color: rgb(35, 38, 40);
+}
+
+.QPushButton[themeID="nav_fixed"] {
+    border-image: url(:/nav/images/nav_fixed_off_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="nav_fixed"]:hover {
+    border-image: url(:/nav/images/nav_fixed_off_hover_48x48.png);
+}
+
+.QPushButton[themeID="nav_fixed"]:checked {
+    border-image: url(:/nav/images/nav_fixed_on_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="nav_fixed"]:checked:hover {
+    border-image: url(:/nav/images/nav_fixed_on_hover_48x48.png);
+}
+
+.QPushButton[themeID="nav_full_screen"] {
+    border-image: url(:/nav/images/nav_full_screen_off_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="nav_full_screen"]:hover {
+    border-image: url(:/nav/images/nav_full_screen_off_hover_48x48.png);
+}
+
+.QPushButton[themeID="icon_doubt"] {
+    qproperty-icon: url(:/icon/images/icon_doubt_win_28x28.png) center;
+    qproperty-iconSize: 14px 14px;
+    background-color: transparent;
+    padding-right: 6px;
+    border: none;
+}
+
+.QPushButton[themeID="msg_btn"] {
+    background-color: rgb(55, 58, 60);
+    border-top: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(36, 38, 40), stop: 0.66 rgb(65, 69, 72));
+    border-bottom: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(43, 45, 47), stop: 0.66 rgb(18, 19, 20));
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.QPushButton[themeID="msg_btn"]:hover {
+    background-color: rgb(45, 48, 50);
+    border-top: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(26, 28, 30), stop: 0.66 rgb(55, 59, 62));
+    border-bottom: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(33, 35, 37), stop: 0.66 rgb(18, 19, 20));
+}
+
+.QPushButton[themeID="msg_btn"]:pressed {
+    background-color: rgb(35, 38, 40);
+    border-top: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(16, 18, 20), stop: 0.66 rgb(45, 49, 52));
+    border-bottom: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(23, 25, 27), stop: 0.66 rgb(8, 9, 10));
+    padding-left: 2px;
+    padding-top: 1px;
+}
+
+.QPushButton[themeID="icon_no_padding"] {
+    background-color: transparent;
+    padding: 0px;
+}
+
+.QPushButton[themeID="icon_no_padding"]:pressed {
+    padding: 0px;
+}
+
+QPushButton[themeID="dev_ctrl"] {
+    text-align: center;
+    color: white;
+    font-size: 14px;
+    border-top: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(64, 69, 72), stop: 0.66 rgb(63, 67, 69));
+    border-bottom: 1px solid rgb(32, 34, 35);
+    border-radius: 6px;
+    background-color: rgb(55, 58, 60);
+    padding-top: -2px;
+}
+
+QPushButton[themeID="dev_ctrl"]:checked {
+    color: white;
+    border-top: 2px solid QLinearGradient( x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(182, 68, 68), stop: 0.66 rgb(238, 27, 61));
+    border-bottom: 1px solid rgb(94, 19, 37);
+    background-color: rgb(230, 0, 51);
+}
+
+QPushButton[themeID="dev_ctrl"]:disabled {
+    color: rgba(255, 255, 255, 102);
+    border-top: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(64, 69, 72), stop: 0.66 rgb(63, 67, 69));
+    border-bottom: 1px solid rgb(32, 34, 35);
+    background-color: rgb(55, 57, 59);
+}
+
+.QPushButton[themeID="btn_copy"] {
+    border-image: url(:/btn/images/btn_copy_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_loop"] {
+    border-image: url(:/btn/images/btn_loop_off_56x56.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_loop"]:hover {
+    border-image: url(:/btn/images/btn_loop_off_hover_56x56.png);
+}
+
+.QPushButton[themeID="btn_loop"]:checked {
+    border-image: url(:/btn/images/btn_loop_on_56x56.png);
+}
+
+.QPushButton[themeID="btn_loop"]:checked:hover {
+    border-image: url(:/btn/images/btn_loop_on_hover_56x56.png);
+}
+
+QPushButton#pbMute {
+    background-color: transparent;
+    border-image: url(":/btn/images/btn_voice_on_56x56.png");
+}
+
+QPushButton#pbMute:checked {
+    border-image: url(":/btn/images/btn_voice_off_56x56.png");
+}
+
+QPushButton#pbMute:disabled {
+    border-image: url(":/btn/images/btn_voice_on_dis_56x56.png");
+}
+
+QPushButton#pbMute:checked:disabled {
+    border-image: url(":/btn/images/btn_voice_off_dis_56x56.png");
+}
+
+.QPushButton#pbToolBarExpand {
+    border-image: url(:/icon/images/icon_arrow_down1_on_36x36.png);
+}
+
+.QPushButton#pbToolBarExpand:checked {
+    border-image: url(:/icon/images/icon_arrow_up1_on_36x36.png);
+}
+
+QLineEdit, QPlainTextEdit {
+    color: rgb(255, 255, 255);
+    background-color: transparent;
+    border-image: url(:/pic/images/pic_bg2_74x25.png) 3px;
+    border-width: 3px;
+    padding-left: 14px;
+    padding-top: 0px;
+    padding-bottom: 2px;
+    font-size: 14px;
+}
+
+QTextEdit {
+    color: rgb(255, 255, 255);
+    background-color: transparent;
+    border-width: 0px;
+    font-size: 14px;
+    selection-background-color: rgb(96, 96, 96);
+}
+
+.RMButton {
+    background-color: transparent;
+    border-image: url(:/pic/images/pic_bg1_106x25.png) 3px;
+    border-width: 3px;
+}
+
+/* > 表示匹配 RMButton 容器下面所有的 QPushButton */
+RMButton > QPushButton {
+    background-color: rgb(55, 58, 60);
+    color: rgb(255, 255, 255);
+    font-size: 14px;
+    border-radius: 4px;
+    padding-top: 0px;
+    padding-bottom: 2px;
+    padding-left: 6px;
+    padding-right: 6px;
+}
+
+RMButton > QPushButton:hover {
+    background-color: rgb(45, 48, 50);
+}
+
+RMButton > QPushButton:pressed {
+    padding-left: 8px;
+    padding-bottom: 0px;
+}
+
+RMButton > QPushButton:disabled {
+    background-color: rgb(55, 58, 60);
+}
+
+RMButtons#pbNvidiaBlurEffect, RMButtons#pbSingleRecModeSelect, RMButtons#pbSingleRecPlaySetting,
+    RMButtons#pbScreenMode, RMButtons#pbBeautyResize, RMButtons#pbBeautyBgType {
+    background-color: transparent;
+    border-image: url(:/pic/images/pic_bg2_74x25.png) 3px;
+    border-width: 3px;
+}
+
+RMButtons#pbPreviewSwitch {
+    background-color: transparent;
+    border-image: url(:/pic/images/pic_bg2_74x25.png);
+}
+
+RMButtons#pbPreviewSwitch > QPushButton {
+    background-color: transparent;
+    border-radius: 4px;
+    padding: 0px;
+}
+
+RMButtons#pbPreviewSwitch > QPushButton:checked {
+	padding: 0px;
+    background-color: rgb(100, 103, 109);
+}
+
+RMButtons > QPushButton {
+    border-radius: 4px;
+    background-color: transparent;
+    color: rgb(255, 255, 255);
+    padding-top: 0px;
+    padding-bottom: 2px;
+}
+
+RMButtons > QPushButton:checked {
+    background-color: rgb(230, 0, 51);
+    color: rgb(255, 255, 255);
+}
+
+RMButtons > QPushButton:disabled:checked {
+    background-color: rgb(55, 58, 60);
+    color: rgba(255, 255, 255, 102);
+}
+
+RMButtons > QPushButton:disabled:!checked {
+    background-color: transparent;
+    color: rgba(255, 255, 255, 102);
+}
+
+.QPushButton[themeID="btn_output"] {
+    background-color: transparent;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 12px;
+    padding: 0px;
+    padding-bottom: 2px;
+}
+
+.QPushButton[themeID="btn_output"]:checked {
+    padding: 0px;
+    padding-bottom: 2px;
+    background-color: rgba(230, 0, 51, 1);
+}
+
+.QPushButton[themeID="btn_output"]:checked:disabled {
+    background-color: rgba(85, 88, 90, 1);
+}
+
+.QPushButton[themeID="btn_pip1"] {
+    border-image: url(:/btn/images/btn_pip1_enabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip1"]:checked {
+    border-image: url(:/btn/images/btn_pip1_checked_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip1"]:disabled {
+    border-image: url(:/btn/images/btn_pip1_disabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip1"]:checked:disabled {
+    border-image: url(:/btn/images/btn_pip1_checked_disabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip2"] {
+    border-image: url(:/btn/images/btn_pip2_enabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip2"]:checked {
+    border-image: url(:/btn/images/btn_pip2_checked_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip2"]:disabled {
+    border-image: url(:/btn/images/btn_pip2_disabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+.QPushButton[themeID="btn_pip2"]:checked:disabled {
+    border-image: url(:/btn/images/btn_pip2_checked_disabled_40x40.png);
+    background-color: transparent;
+    border-radius: 4px;
+}
+
+QPushButton[themeID="btn_red"] {
+    font-size: 14px;
+    color: #FFFFFF;
+    background-color: rgba(230, 0, 51, 255);
+    border-radius: 8px;
+    border: 1px solid rgb(55, 58, 60);
+}
+
+QPushButton[themeID="btn_red"]:hover {
+     background-color: rgba(230, 0, 51, 204);
+}
+
+QPushButton[themeID="btn_red"]:disabled {
+    color: rgba(255, 255, 255, 102);
+    background-color: rgba(230, 0, 51, 102);
+}
+
+QPushButton[themeID="btn_gray"] {
+    background-color: rgb(55, 58, 60);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 6px;
+    border-top: 2px solid qlineargradient(
+        x1: 0, y1: 0, x2: 0, y2: 1,
+        stop: 0.33 rgb(64, 69, 72),
+        stop: 0.66 rgb(63, 67, 69)
+    );
+    border-bottom: 1px solid rgb(32, 34, 35);
+    font-size: 14px;
+    outline: none;
+}
+
+QPushButton[themeID="btn_gray"]:hover {
+    background-color: rgba(55, 58, 60, 204);
+}
+
+QPushButton[themeID="btn_gray"]:pressed {
+    background-color: rgb(45, 48, 50);
+}
+
+QPushButton[themeID="btn_gray"]:disabled {
+    background-color: rgb(55, 58, 60);
+    color: rgba(255, 255, 255, 102);
+}
+
+.QPushButton[themeID="btn_loop_select"] {
+    background-color: rgba(58, 58, 58, 1);
+    border-radius: 8px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 153);
+    border: none;
+}
+
+.QPushButton[themeID="btn_loop_select"]:hover {
+    background-color: rgba(70, 70, 70, 1);
+}
+
+.QPushButton[themeID="btn_loop_select"]:checked {
+    background-color: rgba(230, 0, 51, 1);
+    color: rgba(255, 255, 255, 255);
+}
+
+.QPushButton[themeID="btn_loop_select"]:disabled {
+    background-color: rgba(40, 40, 40, 1);
+    color: rgba(255, 255, 255, 51);
+}
+
+.QPushButton[themeID="btn_beauty_select"] {
+    background-color: transparent;
+    border-radius: 4px;
+    font-size: 12px;
+	text-align: center;
+	color: rgba(255, 255, 255, 153);
+}
+
+.QPushButton[themeID="btn_beauty_select"]:checked {
+    background-color: rgba(230, 0, 51, 1);
+    padding: 0px;
+	color: rgba(255, 255, 255, 255);
+}
+
+.QPushButton[themeID="btn_beauty_select"]:checked:disabled {
+    padding: 0px;
+    background-color: rgba(85, 88, 90, 1);
+}
+
+.QPushButton[themeID="nav_output_more"] {
+    border-image: url(:/nav/images/nav_output_more_off_24x24.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="nav_output_more"]:hover {
+    border-image: url(:/nav/images/nav_output_more_off_hover_24x24.png);
+}
+
+.QPushButton[themeID="btn_switch"] {
+    border-image: url(:/btn/images/btn_switch_off_96x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_switch"]:checked {
+    border-image: url(:/btn/images/btn_switch_on_96x48.png);
+}
+
+.QPushButton[themeID="btn_switch"]:disabled {
+    border-image: url(:/btn/images/btn_switch_dis_96x48.png);
+}
+
+.QPushButton[themeID="btn_switch2"] {
+    border-image: url(:/btn/images/btn_switch_off_96x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_switch2"]:checked {
+    border-image: url(:/btn/images/btn_switch_on_96x48.png);
+}
+
+.QPushButton[themeID="btn_switch2"]:disabled {
+    border-image: url(:/btn/images/btn_switch_dis_96x48.png);
+}
+
+.QPushButton[themeID="btn_switch2"]:checked:disabled {
+    border-image: url(:/btn/images/btn_switch_on_dis_96x48.png);
+}
+
+.QPushButton[themeID="btn_beauty_title"] {
+    background-color: transparent;
+    text-align: left;
+    font-size: 14px;
+    color: rgb(255, 255, 255);
+    padding-left: 0px;
+}
+
+.QPushButton[themeID="btn_beauty_title"]:pressed {
+    padding-left: 0px;
+}
+
+.QPushButton[themeID="main_panel"] {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 153);
+    background-color: transparent;
+    padding-top: 0px;
+}
+
+.QPushButton[themeID="main_panel"]:checked {
+    text-align: center;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 255);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="icon_reset"] {
+    qproperty-icon: url(:/icon/images/icon_reset_28x28.png) center;
+    qproperty-iconSize: 14px 14px;
+    background-color: transparent;
+    border: none;
+}
+
+.QPushButton[themeID="icon_reset_new"] {
+    qproperty-icon: url(:/icon/images/icon_reset_28x28.png) center;
+    qproperty-iconSize: 14px 14px;
+    background-color: transparent;
+    border: none;
+    padding-top: 2px;
+}
+
+.QPushButton[themeID="btn_help"] {
+    background-color: transparent;
+    text-align: left;
+    font-size: 13px;
+    color: rgb(255, 255, 255);
+    padding-left: 0px;
+}
+
+.QPushButton[themeID="btn_help"]:pressed {
+    padding-left: 2px;
+    padding-top: 1px;
+}
+
+.QPushButton[themeID="btn_sd"] {
+    border-image: url(:/btn/images/btn_output_dev_sd_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_text"] {
+    border-image: url(:/btn/images/btn_materia_text_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_text"]:disabled {
+    border-image: url(:/btn/images/btn_materia_text_disabled_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_image"] {
+    border-image: url(:/btn/images/btn_materia_image_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_image"]:disabled {
+    border-image: url(:/btn/images/btn_materia_image_disabled_40x40.png);
+}
+
+.QPushButton[themeID="btn_materia_video"] {
+    border-image: url(:/btn/images/btn_materia_video_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_video"]:disabled {
+    border-image: url(:/btn/images/btn_materia_video_disabled_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_clock"] {
+    border-image: url(:/btn/images/btn_materia_clock_40x40.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_materia_clock"]:disabled {
+    border-image: url(:/btn/images/btn_materia_clock_disabled_40x40.png);
+}
+
+.QPushButton[themeID="btn_materia_more"] {
+    background-color: transparent;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    text-decoration: underline;
+    padding-right: 10px;
+    border: none;
+    padding: 0px;
+    padding-left: 0px;
+    min-height: 0px;
+}
+
+.QPushButton[themeID="btn_sd"]:hover {
+    border-image: url(:/btn/images/btn_output_dev_sd_hover_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_sd"]:disabled {
+    border-image: url(:/btn/images/btn_output_dev_sd_disabled_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_sd"]:disabled:hover{
+    border-image: url(:/btn/images/btn_output_dev_sd_disabled_hover_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_virtual_human"] {
+    border-image: url(:/btn/images/btn_virtual_human_off_48x48.png);
+    background-color: transparent;
+}
+
+.QPushButton[themeID="btn_virtual_human"]:hover {
+    border-image: url(:/btn/images/btn_virtual_human_off_hover_48x48.png);
+}
+
+.QPushButton[themeID="btn_virtual_human"]:checked {
+    border-image: url(:/btn/images/btn_virtual_human_on_48x48.png);
+}
+
+.QPushButton[themeID="btn_virtual_human"]:checked:hover {
+    border-image: url(:/btn/images/btn_virtual_human_on_48x48.png);
+}
+
+QMenu {
+    background-color: rgb(21, 22, 23);
+    border: 1px solid rgb(81, 81, 81);
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+QMenu::item {
+    padding: 2px 10px 2px 10px;
+    height: 28px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    margin: 2px;
+    color: rgb(255, 255, 255);
+}
+
+QMenu::item:selected {
+    background-color: rgb(34, 36, 38);
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: rgb(52, 52, 52);
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+QMenu::icon {
+    width: 15px;
+    height: 15px;
+    padding-left: 15px;
+}
+
+QMenu#ResolutionMenu::item:selected {
+    background-color: rgba(34, 36, 38, 1);
+    border-radius: 6px;
+}
+
+/* QSlider */
+QSlider {
+    background-color: transparent;
+}
+
+QSlider::groove:horizontal {
+    border-radius: 2px;
+    background-color: transparent;
+    height: 5px;
+    padding: 0px 0px;
+}
+
+QSlider::handle:horizontal {
+    background-color: rgb(255, 255, 255);
+    border: none;
+    width: 13px;
+    border-radius: 6px;
+    margin: -4px 0;
+}
+
+QSlider::handle:horizontal:disabled {
+    background-color: rgb(128, 128, 128);
+}
+
+QSlider::sub-page:horizontal {
+    background: rgb(213, 14, 56);
+    border-top: 1px solid rgb(125, 5, 23);
+    border-bottom: 1px solid rgb(45, 0, 3);
+    border-left: 1px solid rgb(111, 6, 30);
+    border-radius: 2px;
+    margin: 0px 0px 0px 0px;
+}
+
+QSlider::sub-page:horizontal:disabled {
+    background: rgb(98, 95, 99);
+    border-top: 1px solid rgb(13, 10, 14);
+    border-bottom: 1px solid rgb(19, 16, 19);
+    border-left: 1px solid rgb(74, 71, 74);
+    border-radius: 2px;
+    margin: 0px 0px 0px 0px;
+}
+
+QSlider::add-page:horizontal {
+    background: rgb(8, 10, 11);
+    border-top: 1px solid rgb(5, 7, 9);
+    border-bottom: 1px solid rgb(22, 24, 25);
+    border-radius: 2px;
+    margin: 0px 0px 0px 0px;
+}
+
+/* ScrollArea */
+QScrollBar:vertical {
+    width: 6px;
+    border: none;
+    background-color: transparent;
+}
+
+QScrollBar::handle:vertical {
+    min-height: 100px;
+    background: #6A6F73;
+    border-radius: 3px;
+}
+
+QScrollBar::sub-line:vertical {
+    background: transparent;
+}
+
+QScrollBar::add-line:vertical {
+    background: transparent;
+}
+
+QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+
+QScrollBar::add-page:vertical {
+    background: transparent;
+}
+
+/* Spinbox and doubleSpinbox */
+QSpinBox, QDoubleSpinBox {
+    color: rgb(231, 231, 231);
+    background-color: transparent;
+    padding-left: 3px;
+    font-size: 12px;
+    border-image: url(:/pic/images/pic_bg2_74x25.png) 3px;
+    border-width: 3px;
+}
+
+QSpinBox:disabled, QDoubleSpinBox:disabled {
+    color: rgba(255, 255, 255, 102);
+}
+
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-origin: margin;
+    subcontrol-position: top right;
+    width: 12px;
+    padding-top: 2px;
+    padding-right: 2px;
+    background-color: transparent;
+    border-width: 0px;
+    border-top-right-radius: 2px;
+}
+
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: margin;
+    subcontrol-position: bottom right;
+    width: 12px;
+    padding-right: 2px;
+    padding-bottom: 3px;
+    background-color: transparent;
+    border-width: 0px;
+    border-bottom-right-radius: 2px;
+}
+
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url(:/icon/images/icon_arrow_up2_on_24x18.png);
+    width: 12px;
+    height: 9px;
+}
+
+QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off, QDoubleSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:off {
+    image: url(:/icon/images/icon_arrow_up2_dis_24x18.png);
+}
+
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url(:/icon/images/icon_arrow_down2_on_24x18.png);
+    width: 12px;
+    height: 9px;
+}
+
+QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off, QDoubleSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:off {
+    image: url(:/icon/images/icon_arrow_down2_dis_24x18.png);
+    width: 12px;
+    height: 9px;
+}
+
+QCheckBox {
+    spacing: 10px;
+    background-color: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 255);
+    font-size: 14px;
+}
+
+QCheckBox:disabled {
+    color: rgba(255, 255, 255, 102);
+}
+
+QCheckBox::indicator {
+    width: 18px;
+    height: 18px;
+    background-color: rgb(25, 27, 29);
+    border: none;
+    border-radius: 3px;
+    image: url(:/icon/images/icon_select_off_36x36.png);
+}
+
+QCheckBox::indicator:checked {
+    image: url(:/icon/images/icon_select_on_36x36.png);
+}
+
+QCheckBox::indicator:checked:disabled {
+    image: url(:/icon/images/icon_select_on_dis_36x36.png);
+}
+
+QCheckBox::indicator:disabled {
+    image: url(:/icon/images/icon_select_off_dis_36x36.png);
+}
+
+/* QComboBox */
+QComboBox {
+    color: rgb(255, 255, 255);
+    background-color: transparent;
+    border-image: url(:/pic/images/pic_bg1_106x25.png) 3px;
+    border-width: 3px;
+    padding-left: 14px;
+    padding-top: 0px;
+    padding-bottom: 2px;
+    font-size: 14px;
+}
+
+QComboBox:disabled {
+    color: rgba(255, 255, 255, 102);
+}
+
+QComboBox QAbstractItemView {
+    color: rgb(255, 255, 255);
+    outline: 0px;
+    font-size: 14px;
+    padding: 0px;
+    border-top: 1px solid rgb(48, 49, 49);
+    border-bottom: 2px solid QLinearGradient(x1: 0, y1: 0, x2: 0, y2: 1, stop: 0.33 rgb(34, 34, 35), stop: 0.66 rgb(42, 42, 42));
+    border-left: 1px solid rgb(61, 61, 61);
+    border-right: 1px solid rgb(61, 61, 61);
+    background-color: rgb(21, 22, 23);
+    /*selection-background-color: rgb(9, 9, 9);*/
+    border-radius: 8px;
+}
+
+QComboBox QAbstractItemView::item {
+    height: 32px;
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QComboBox QAbstractItemView::item:disabled {
+    color: rgba(255, 255, 255, 102);
+}
+
+QComboBox QAbstractItemView::item:hover {
+    background-color: rgb(34, 36, 38);
+    border-width: 1px;
+    border-color: rgb(1, 123,11);
+}
+
+QComboBox::drop-down {
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 24px;
+    height: 20px;
+
+    background-color: transparent;
+    border-image: url(":/pic/images/pic_bg4_48x50.png") 0px;
+}
+
+QComboBox#cbImage::drop-down {
+    width: 22px;
+}
+
+QComboBox::down-arrow {
+    border-image: url(:/icon/images/icon_arrow_down1_on_36x36.png);
+    qproperty-iconSize: 20px 20px;
+}
+
+QComboBox::down-arrow:disabled {
+    border-image: url(:/icon/images/icon_arrow_down1_dis_36x36.png);
+}
+
+QComboBox::down-arrow:on {
+    top: 0px;
+    left: 0px;
+}
+
+/*QToolTip {
+    font-size: 12px;
+    color: rgb(0, 0, 0);
+    padding-left: 4px;
+    padding-right: 4px;
+    background-color: rgb(235, 235, 233);
+    border: none;
+    border-radius: 4px;
+}*/
